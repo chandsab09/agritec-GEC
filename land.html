@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Land Management</title>
+
+    <link rel="stylesheet" href="CSS/style.css">
+
+    <style>
+        .land-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .land-table th,
+        .land-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .land-table th {
+            background-color: #2e7d32;
+            color: white;
+        }
+
+        .delete-btn {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🚜 Land Management</h1>
+    <h2>Manage Your Land Details</h2>
+
+    <div class="card">
+        <h2>Add Land Details</h2>
+
+        <form id="landForm">
+
+            <label>Farmer Name</label><br>
+            <input type="text" id="farmerName"
+                   placeholder="Enter farmer name" required><br><br>
+
+            <label>Land Location</label><br>
+            <input type="text" id="location"
+                   placeholder="Enter land location" required><br><br>
+
+            <label>Land Area (Acres)</label><br>
+            <input type="number" id="area"
+                   placeholder="Enter land area"
+                   min="0.01" step="0.01" required><br><br>
+
+            <label>Soil Type</label><br>
+            <select id="soil" required>
+                <option value="">Select Soil Type</option>
+                <option>Black Soil</option>
+                <option>Red Soil</option>
+                <option>Sandy Soil</option>
+                <option>Clay Soil</option>
+            </select>
+
+            <br><br>
+
+            <button type="submit">Add Land Details</button>
+
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>View Land Information</h2>
+
+        <table class="land-table">
+            <thead>
+                <tr>
+                    <th>Farmer</th>
+                    <th>Location</th>
+                    <th>Area (Acres)</th>
+                    <th>Soil Type</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody id="landTable">
+                <tr>
+                    <td colspan="5">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <br>
+
+    <button onclick="location.href='p.html'">
+        Back to Dashboard
+    </button>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+
+    <script>
+        const landForm = document.getElementById("landForm");
+
+        landForm.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const farmerName =
+                document.getElementById("farmerName").value.trim();
+
+            const locationValue =
+                document.getElementById("location").value.trim();
+
+            const area =
+                Number(document.getElementById("area").value);
+
+            const soil =
+                document.getElementById("soil").value;
+
+            if (!farmerName || !locationValue || !soil ||
+                !Number.isFinite(area) || area <= 0) {
+                alert("Please enter all details correctly");
+                return;
+            }
+
+            const { data: { user }, error: userError } =
+                await supabaseClient.auth.getUser();
+
+            if (userError || !user) {
+                alert("Please login first");
+                window.location.href = "login.html";
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from("lands")
+                .insert([{
+                    farmer_name: farmerName,
+                    location: locationValue,
+                    area: area,
+                    soil_type: soil,
+                    user_id: user.id
+                }]);
+
+            if (error) {
+                alert("Error: " + error.message);
+                return;
+            }
+
+            alert("Land details added successfully!");
+
+            landForm.reset();
+            loadLands();
+        });
+
+        async function loadLands() {
+            const table = document.getElementById("landTable");
+
+            const { data, error } = await supabaseClient
+                .from("lands")
+                .select("*")
+                .order("id", { ascending: false });
+
+            if (error) {
+                table.innerHTML =
+                    `<tr><td colspan="5">Error: ${error.message}</td></tr>`;
+                return;
+            }
+
+            table.innerHTML = "";
+
+            if (!data || data.length === 0) {
+                table.innerHTML =
+                    `<tr><td colspan="5">No land records found</td></tr>`;
+                return;
+            }
+
+            data.forEach(land => {
+                const row = document.createElement("tr");
+
+                [
+                    land.farmer_name,
+                    land.location,
+                    land.area,
+                    land.soil_type
+                ].forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value ?? "";
+                    row.appendChild(cell);
+                });
+
+                const actionCell = document.createElement("td");
+                const deleteButton = document.createElement("button");
+
+                deleteButton.textContent = "Delete";
+                deleteButton.className = "delete-btn";
+                deleteButton.onclick = () => deleteLand(land.id);
+
+                actionCell.appendChild(deleteButton);
+                row.appendChild(actionCell);
+
+                table.appendChild(row);
+            });
+        }
+
+        async function deleteLand(id) {
+            if (!confirm("Are you sure you want to delete this land record?")) {
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from("lands")
+                .delete()
+                .eq("id", id);
+
+            if (error) {
+                alert("Delete failed: " + error.message);
+                return;
+            }
+
+            alert("Land record deleted successfully!");
+            loadLands();
+        }
+
+        loadLands();
+    </script>
+
+</body>
+</html>

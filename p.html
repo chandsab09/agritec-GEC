@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agritec Dashboard</title>
+
+<link rel="stylesheet" href="CSS/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f7f2;font-family:'Segoe UI',Arial,sans-serif;color:#263b2c}
+.dashboard-layout{display:flex;min-height:100vh}
+.sidebar{width:250px;min-height:100vh;background:#145c35;color:white;padding:25px 15px;flex-shrink:0}
+.sidebar h2{text-align:center;margin-bottom:8px}
+.sidebar .subtitle{text-align:center;color:#c9e7d1;font-size:13px;margin-bottom:30px}
+.sidebar nav a,.sidebar nav button{display:block;width:100%;padding:13px 12px;margin:6px 0;color:white;text-decoration:none;border:none;background:transparent;text-align:left;font-size:14px;border-radius:8px;cursor:pointer}
+.sidebar nav a:hover,.sidebar nav a.active,.sidebar nav button:hover{background:#287c4a}
+.main-content{flex:1;min-width:0;padding:25px}
+.topbar{background:linear-gradient(120deg,#176b35,#3b9c58);color:white;padding:25px;border-radius:15px;display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:25px}
+.topbar h1{margin:0 0 8px;font-size:27px}
+.topbar p{margin:0;color:#e0f5e5}
+.topbar-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.topbar button{background:white;color:#176b35;padding:11px 18px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
+.language-select{padding:11px;border:none;border-radius:8px;background:white;color:#176b35;font-weight:bold;cursor:pointer}
+.welcome-box{background:white;padding:22px;border-radius:12px;margin-bottom:25px;border-left:5px solid #269b50}
+.welcome-box h2{color:#176b35;margin:0 0 8px}
+.profile-box{background:white;padding:25px;border-radius:13px;margin-bottom:25px;box-shadow:0 3px 12px rgba(0,0,0,.05)}
+.profile-heading{color:#176b35;margin:0 0 20px}
+.profile-header{display:flex;align-items:center;gap:18px;margin-bottom:22px;flex-wrap:wrap}
+.profile-avatar{width:75px;height:75px;border-radius:50%;background:#176b35;color:white;display:flex;justify-content:center;align-items:center;font-size:30px;font-weight:bold}
+.profile-header h3{margin:0 0 6px;color:#176b35}
+.profile-header p{margin:0;color:#68776b}
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px}
+.profile-item{background:#f1f7f1;padding:16px;border-radius:9px;overflow-wrap:anywhere}
+.profile-item h4{color:#68776b;margin:0 0 8px;font-size:13px}
+.profile-item p{color:#176b35;font-weight:bold;margin:0}
+.profile-message{color:#68776b;margin-top:15px;font-size:13px}
+.section-heading{color:#176b35;margin:28px 0 18px;font-size:21px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px}
+.stat-card{background:white;padding:22px;border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.05);border-bottom:4px solid #269b50}
+.stat-card .stat-icon{font-size:30px}
+.stat-card h3{font-size:14px;color:#68776b;margin:12px 0}
+.stat-card p{font-size:25px;font-weight:bold;color:#176b35;margin:0}
+.announcement-box{background:white;padding:22px;border-radius:13px;box-shadow:0 3px 12px rgba(0,0,0,.05);margin-bottom:25px}
+.announcement-box h3{color:#176b35;margin-top:0}
+.announcement-item{background:#f1f7f1;border-left:4px solid #269b50;padding:16px;border-radius:8px;margin-bottom:13px}
+.announcement-item h4{color:#176b35;margin:0 0 8px;font-size:17px}
+.announcement-item p{margin:0 0 10px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.announcement-date{color:#68776b;font-size:12px}
+.no-announcements{color:#68776b;background:#f1f7f1;padding:15px;border-radius:8px}
+.weather-box{background:white;padding:22px;border-radius:13px;box-shadow:0 3px 12px rgba(0,0,0,.05)}
+.weather-box h3{color:#176b35}
+.weather-search{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}
+.weather-search input{flex:1;min-width:180px;padding:12px;border:1px solid #ccc;border-radius:7px}
+.weather-search button{background:#269b50;color:white;padding:12px 20px;border:none;border-radius:7px;cursor:pointer}
+.current-weather{text-align:center;background:#e8f5e9;padding:20px;border-radius:10px}
+.weather-icon{font-size:45px}
+.temperature{font-size:32px;color:#176b35;font-weight:bold}
+.weather-details,.forecast-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin-top:15px}
+.weather-detail,.forecast-card{text-align:center;padding:15px;background:#f1f7f1;border-radius:9px}
+.weather-detail h4{margin:5px;font-size:13px}
+.forecast-card p{font-size:13px}
+#weatherMessage{color:#c0392b;margin:10px 0}
+.weather-note{font-size:12px;color:#68776b;margin-top:15px}
+footer{text-align:center;padding:25px;color:#68776b}
+@media(max-width:800px){
+.dashboard-layout{flex-direction:column}
+.sidebar{width:100%;min-height:auto}
+.sidebar nav{display:grid;grid-template-columns:repeat(2,1fr);gap:3px}
+.main-content{padding:15px}
+}
+@media(max-width:450px){
+.sidebar nav{grid-template-columns:1fr}
+.topbar h1{font-size:21px}
+.weather-search{flex-direction:column}
+.weather-search button{width:100%}
+}
+</style>
+</head>
+
+<body>
+<div class="dashboard-layout">
+
+<aside class="sidebar">
+<h2>🌾 Agritec</h2>
+<p class="subtitle" id="sidebarSubtitle">Smart Agriculture System</p>
+
+<nav>
+<a href="p.html" class="active" data-i="navDashboard">🏠 Dashboard</a>
+<a href="farmers.html" data-i="navFarmers">👨‍🌾 Farmers</a>
+<a href="crops.html" data-i="navCrops">🌱 Crops</a>
+<a href="livestock.html" data-i="navLivestock">🐄 Livestock</a>
+<a href="land.html" data-i="navLand">🚜 Land Details</a>
+<a href="expenses.html" data-i="navExpenses">💰 Expenses</a>
+<a href="market_price.html" data-i="navMarket">📈 Market Price</a>
+<a href="reports.html" data-i="navReports">📊 Reports</a>
+<a href="crop_recommendation.html" data-i="navRecommendation">🌾 Crop Recommendation</a>
+<a href="irrigation.html" data-i="navIrrigation">💧 Irrigation</a>
+<a href="pest_disease.html" data-i="navPest">🐛 Pest & Disease</a>
+<a href="fertilizer.html" data-i="navFertilizer">🌿 Fertilizer</a>
+<a href="selling.html" data-i="navSelling">🛒 Selling Products</a>
+<a href="farmer_requests.html" data-i="navRequests">📦 Incoming Requests</a>
+<button onclick="logout()" data-i="navLogout">🚪 Logout</button>
+</nav>
+</aside>
+
+<main class="main-content">
+
+<header class="topbar">
+<div>
+<h1 id="mainTitle">🌾 Farm Management System</h1>
+<p id="mainSubtitle">Smart Farming • Better Management • Better Growth</p>
+</div>
+
+<div class="topbar-right">
+<select class="language-select" id="languageSelect" onchange="changeLanguage(this.value)">
+<option value="en">🇬🇧 English</option>
+<option value="kn">🇮🇳 ಕನ್ನಡ</option>
+<option value="hi">🇮🇳 हिन्दी</option>
+<option value="te">🇮🇳 తెలుగు</option>
+<option value="ta">🇮🇳 தமிழ்</option>
+</select>
+</div>
+</header>
+
+<section class="welcome-box">
+<h2 id="welcomeTitle">Welcome to Your Farm Dashboard 👋</h2>
+<p id="welcomeText">Manage all your farming activities in one place.</p>
+</section>
+
+<h2 class="section-heading" id="profileSectionHeading">👤 My Profile</h2>
+
+<section class="profile-box">
+<div class="profile-header">
+<div class="profile-avatar" id="profileAvatar">F</div>
+<div>
+<h3 id="profileName">Loading profile...</h3>
+<p id="farmerAccountText">Farmer Account</p>
+</div>
+</div>
+
+<div class="profile-grid">
+<div class="profile-item">
+<h4 id="emailLabel">📧 Email Address</h4>
+<p id="profileEmail">Loading...</p>
+</div>
+<div class="profile-item">
+<h4 id="phoneLabel">📱 Phone Number</h4>
+<p id="profilePhone">Loading...</p>
+</div>
+<div class="profile-item">
+<h4 id="landAreaLabel">🚜 Land Area</h4>
+<p id="profileLand">Loading...</p>
+</div>
+<div class="profile-item">
+<h4 id="locationLabel">📍 Village / Location</h4>
+<p id="profileAddress">Loading...</p>
+</div>
+</div>
+
+<p class="profile-message" id="profileMessage"></p>
+</section>
+
+<h2 class="section-heading" id="overviewHeading">📊 Farm Overview</h2>
+
+<div class="stats-grid">
+<div class="stat-card">
+<span class="stat-icon">👨‍🌾</span>
+<h3 id="statFarmersLabel">Total Farmers</h3>
+<p id="totalFarmers">Loading...</p>
+</div>
+<div class="stat-card">
+<span class="stat-icon">🌱</span>
+<h3 id="statCropsLabel">Total Crops</h3>
+<p id="totalCrops">Loading...</p>
+</div>
+<div class="stat-card">
+<span class="stat-icon">🐄</span>
+<h3 id="statLivestockLabel">Total Livestock</h3>
+<p id="totalLivestock">Loading...</p>
+</div>
+<div class="stat-card">
+<span class="stat-icon">🚜</span>
+<h3 id="statLandLabel">Total Land Area</h3>
+<p id="totalLand">Loading...</p>
+</div>
+<div class="stat-card">
+<span class="stat-icon">💰</span>
+<h3 id="statExpensesLabel">Total Expenses</h3>
+<p id="totalExpenses">Loading...</p>
+</div>
+</div>
+
+<h2 class="section-heading" id="announcementSectionHeading">📢 Admin Announcements</h2>
+
+<section class="announcement-box">
+<h3 id="announcementHeading">Latest Updates from Admin</h3>
+<div id="announcementsList">
+<p class="no-announcements">Loading announcements...</p>
+</div>
+</section>
+
+<h2 class="section-heading" id="weatherSectionHeading">🌦️ Weather Forecast</h2>
+
+<section class="weather-box">
+<h3 id="weatherHeading">Check Your Farm Weather</h3>
+
+<div class="weather-search">
+<input type="text" id="cityInput" value="Bengaluru" placeholder="Enter city name">
+<button onclick="loadWeather()" id="weatherSearchBtn">Check Weather</button>
+</div>
+
+<p id="weatherMessage"></p>
+
+<div id="weatherResult" style="display:none;">
+<div class="current-weather">
+<h3 id="weatherCity"></h3>
+<div class="weather-icon" id="weatherIcon">☀️</div>
+<div class="temperature" id="temperature">--°C</div>
+<p id="weatherCondition"></p>
+</div>
+
+<div class="weather-details">
+<div class="weather-detail">💧
+<h4 id="humidityLabel">Humidity</h4>
+<p id="humidity">--%</p>
+</div>
+<div class="weather-detail">🌬️
+<h4 id="windLabel">Wind Speed</h4>
+<p id="windSpeed">-- km/h</p>
+</div>
+<div class="weather-detail">🌡️
+<h4 id="feelsLabel">Feels Like</h4>
+<p id="feelsLike">--°C</p>
+</div>
+</div>
+
+<h3 style="margin-top:25px;color:#176b35" id="forecastHeading">📅 7-Day Forecast</h3>
+<div class="forecast-grid" id="forecastGrid"></div>
+
+<p class="weather-note" id="weatherNote">
+Weather information provided by Open-Meteo. Forecasts are estimates and may change.
+</p>
+</section>
+
+<footer id="footerText">© 2026 Agritec | Smart Agriculture</footer>
+</main>
+</div>
+
+<script src="supabase.js"></script>
+
+<script>
+/* ========== LANGUAGE DATA ========== */
+
+const translations = {
+en:{
+sidebarSubtitle:"Smart Agriculture System",
+mainSubtitle:"Smart Farming • Better Management • Better Growth",
+welcomeTitle:"Welcome to Your Farm Dashboard 👋",
+welcomeText:"Manage all your farming activities in one place.",
+profileHeading:"👤 My Profile",farmerAccount:"Farmer Account",
+email:"📧 Email Address",phone:"📱 Phone Number",
+landArea:"🚜 Land Area",location:"📍 Village / Location",
+overview:"📊 Farm Overview",farmers:"Total Farmers",crops:"Total Crops",
+livestock:"Total Livestock",land:"Total Land Area",expenses:"Total Expenses",
+announcementSection:"📢 Admin Announcements",announcementHeading:"Latest Updates from Admin",
+weatherSection:"🌦️ Weather Forecast",weatherHeading:"Check Your Farm Weather",
+searchWeather:"Check Weather",humidity:"Humidity",wind:"Wind Speed",
+feels:"Feels Like",forecast:"📅 7-Day Forecast",
+weatherNote:"Weather information provided by Open-Meteo. Forecasts are estimates and may change.",
+footer:"© 2026 Agritec | Smart Agriculture",
+navDashboard:"🏠 Dashboard",navFarmers:"👨‍🌾 Farmers",navCrops:"🌱 Crops",
+navLivestock:"🐄 Livestock",navLand:"🚜 Land Details",navExpenses:"💰 Expenses",
+navMarket:"📈 Market Price",navReports:"📊 Reports",navRecommendation:"🌾 Crop Recommendation",
+navIrrigation:"💧 Irrigation",navPest:"🐛 Pest & Disease",navFertilizer:"🌿 Fertilizer",
+navSelling:"🛒 Selling Products",navRequests:"📦 Incoming Requests",navLogout:"🚪 Logout",
+loading:"Loading...",notAvailable:"Not available",notAdded:"Not added",
+noAnnouncements:"No announcements available right now.",posted:"Posted on:",
+enterCity:"Enter city name",loadingWeather:"Loading weather information...",
+cityNotFound:"City not found. Try another city.",weatherError:"Unable to load weather information.",
+weatherConditions:["Clear Sky","Partly Cloudy","Overcast","Foggy","Drizzle","Rain","Snow","Rain Showers","Thunderstorm","Weather Update"],
+profileMissing:"Farmer details are not added yet. Add your details in the Farmers section.",
+profileLoaded:"Your profile details are loaded from your farmer record.",
+profileError:"Unable to load farmer details: ",
+noCity:"Please enter a city name.",weatherServiceError:"Weather service unavailable.",
+unableCity:"Unable to find city."
+},
+kn:{
+sidebarSubtitle:"ಸ್ಮಾರ್ಟ್ ಕೃಷಿ ವ್ಯವಸ್ಥೆ",
+mainSubtitle:"ಸ್ಮಾರ್ಟ್ ಕೃಷಿ • ಉತ್ತಮ ನಿರ್ವಹಣೆ • ಉತ್ತಮ ಬೆಳವಣಿಗೆ",
+welcomeTitle:"ನಿಮ್ಮ ಕೃಷಿ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಸ್ವಾಗತ 👋",
+welcomeText:"ನಿಮ್ಮ ಎಲ್ಲಾ ಕೃಷಿ ಚಟುವಟಿಕೆಗಳನ್ನು ಒಂದೇ ಸ್ಥಳದಲ್ಲಿ ನಿರ್ವಹಿಸಿ.",
+profileHeading:"👤 ನನ್ನ ಪ್ರೊಫೈಲ್",farmerAccount:"ರೈತ ಖಾತೆ",
+email:"📧 ಇಮೇಲ್ ವಿಳಾಸ",phone:"📱 ಫೋನ್ ಸಂಖ್ಯೆ",
+landArea:"🚜 ಜಮೀನು ವಿಸ್ತೀರ್ಣ",location:"📍 ಗ್ರಾಮ / ಸ್ಥಳ",
+overview:"📊 ಕೃಷಿ ಮಾಹಿತಿ",farmers:"ಒಟ್ಟು ರೈತರು",crops:"ಒಟ್ಟು ಬೆಳೆಗಳು",
+livestock:"ಒಟ್ಟು ಜಾನುವಾರುಗಳು",land:"ಒಟ್ಟು ಜಮೀನು",expenses:"ಒಟ್ಟು ಖರ್ಚು",
+announcementSection:"📢 ಆಡಳಿತ ಪ್ರಕಟಣೆಗಳು",announcementHeading:"ಆಡಳಿತದ ಇತ್ತೀಚಿನ ಮಾಹಿತಿ",
+weatherSection:"🌦️ ಹವಾಮಾನ ಮುನ್ಸೂಚನೆ",weatherHeading:"ನಿಮ್ಮ ಕೃಷಿಯ ಹವಾಮಾನ ಪರಿಶೀಲಿಸಿ",
+searchWeather:"ಹವಾಮಾನ ಪರಿಶೀಲಿಸಿ",humidity:"ಆರ್ದ್ರತೆ",wind:"ಗಾಳಿಯ ವೇಗ",
+feels:"ಅನುಭವವಾಗುವ ತಾಪಮಾನ",forecast:"📅 7 ದಿನಗಳ ಮುನ್ಸೂಚನೆ",
+weatherNote:"Open-Meteo ಹವಾಮಾನ ಮಾಹಿತಿ. ಮುನ್ಸೂಚನೆ ಬದಲಾಗಬಹುದು.",
+footer:"© 2026 Agritec | ಸ್ಮಾರ್ಟ್ ಕೃಷಿ",
+navDashboard:"🏠 ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",navFarmers:"👨‍🌾 ರೈತರು",navCrops:"🌱 ಬೆಳೆಗಳು",
+navLivestock:"🐄 ಜಾನುವಾರುಗಳು",navLand:"🚜 ಜಮೀನು ವಿವರ",navExpenses:"💰 ಖರ್ಚುಗಳು",
+navMarket:"📈 ಮಾರುಕಟ್ಟೆ ಬೆಲೆ",navReports:"📊 ವರದಿಗಳು",navRecommendation:"🌾 ಬೆಳೆ ಸಲಹೆ",
+navIrrigation:"💧 ನೀರಾವರಿ",navPest:"🐛 ಕೀಟ ಮತ್ತು ರೋಗ",navFertilizer:"🌿 ಗೊಬ್ಬರ",
+navSelling:"🛒 ಉತ್ಪನ್ನ ಮಾರಾಟ",navRequests:"📦 ಬಂದ ವಿನಂತಿಗಳು",navLogout:"🚪 ಲಾಗ್‌ಔಟ್",
+loading:"ಲೋಡ್ ಆಗುತ್ತಿದೆ...",notAvailable:"ಲಭ್ಯವಿಲ್ಲ",notAdded:"ಸೇರಿಸಿಲ್ಲ",
+noAnnouncements:"ಈಗ ಯಾವುದೇ ಪ್ರಕಟಣೆಗಳಿಲ್ಲ.",posted:"ಪ್ರಕಟಿಸಿದ ದಿನಾಂಕ:",
+enterCity:"ನಗರದ ಹೆಸರನ್ನು ನಮೂದಿಸಿ",loadingWeather:"ಹವಾಮಾನ ಮಾಹಿತಿ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+cityNotFound:"ನಗರ ಕಂಡುಬಂದಿಲ್ಲ. ಬೇರೆ ನಗರ ಪ್ರಯತ್ನಿಸಿ.",weatherError:"ಹವಾಮಾನ ಮಾಹಿತಿ ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+weatherConditions:["ಬಿಸಿಲು","ಭಾಗಶಃ ಮೋಡ","ಮೋಡ ಕವಿದಿದೆ","ಮಂಜು","ತುಂತುರು ಮಳೆ","ಮಳೆ","ಹಿಮ","ಮಳೆ ಸುರಿಯುವಿಕೆ","ಗುಡುಗು ಸಹಿತ ಮಳೆ","ಹವಾಮಾನ ಮಾಹಿತಿ"],
+profileMissing:"ರೈತರ ವಿವರಗಳನ್ನು ಇನ್ನೂ ಸೇರಿಸಿಲ್ಲ. ರೈತರ ವಿಭಾಗದಲ್ಲಿ ವಿವರಗಳನ್ನು ಸೇರಿಸಿ.",
+profileLoaded:"ನಿಮ್ಮ ರೈತರ ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಿದೆ.",
+profileError:"ರೈತರ ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: ",
+noCity:"ದಯವಿಟ್ಟು ನಗರದ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.",weatherServiceError:"ಹವಾಮಾನ ಸೇವೆ ಲಭ್ಯವಿಲ್ಲ.",
+unableCity:"ನಗರವನ್ನು ಹುಡುಕಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
+},
+hi:{
+sidebarSubtitle:"स्मार्ट कृषि प्रणाली",
+mainSubtitle:"स्मार्ट खेती • बेहतर प्रबंधन • बेहतर विकास",
+welcomeTitle:"आपके फार्म डैशबोर्ड में आपका स्वागत है 👋",
+welcomeText:"अपनी सभी कृषि गतिविधियों को एक ही जगह प्रबंधित करें।",
+profileHeading:"👤 मेरी प्रोफ़ाइल",farmerAccount:"किसान खाता",
+email:"📧 ईमेल पता",phone:"📱 फ़ोन नंबर",
+landArea:"🚜 भूमि क्षेत्र",location:"📍 गाँव / स्थान",
+overview:"📊 खेत का विवरण",farmers:"कुल किसान",crops:"कुल फसलें",
+livestock:"कुल पशुधन",land:"कुल भूमि",expenses:"कुल खर्च",
+announcementSection:"📢 व्यवस्थापक घोषणाएँ",announcementHeading:"व्यवस्थापक की नवीनतम जानकारी",
+weatherSection:"🌦️ मौसम पूर्वानुमान",weatherHeading:"अपने खेत का मौसम देखें",
+searchWeather:"मौसम देखें",humidity:"नमी",wind:"हवा की गति",
+feels:"महसूस होने वाला तापमान",forecast:"📅 7 दिन का पूर्वानुमान",
+weatherNote:"मौसम की जानकारी Open-Meteo से। पूर्वानुमान बदल सकते हैं।",
+footer:"© 2026 Agritec | स्मार्ट कृषि",
+navDashboard:"🏠 डैशबोर्ड",navFarmers:"👨‍🌾 किसान",navCrops:"🌱 फसलें",
+navLivestock:"🐄 पशुधन",navLand:"🚜 भूमि विवरण",navExpenses:"💰 खर्च",
+navMarket:"📈 बाज़ार भाव",navReports:"📊 रिपोर्ट",navRecommendation:"🌾 फसल सुझाव",
+navIrrigation:"💧 सिंचाई",navPest:"🐛 कीट और रोग",navFertilizer:"🌿 उर्वरक",
+navSelling:"🛒 उत्पाद बेचें",navRequests:"📦 प्राप्त अनुरोध",navLogout:"🚪 लॉगआउट",
+loading:"लोड हो रहा है...",notAvailable:"उपलब्ध नहीं",notAdded:"जोड़ा नहीं गया",
+noAnnouncements:"अभी कोई घोषणा उपलब्ध नहीं है।",posted:"प्रकाशित:",
+enterCity:"शहर का नाम दर्ज करें",loadingWeather:"मौसम की जानकारी लोड हो रही है...",
+cityNotFound:"शहर नहीं मिला। दूसरा शहर आज़माएँ।",weatherError:"मौसम जानकारी लोड नहीं हो सकी।",
+weatherConditions:["साफ़ आसमान","आंशिक बादल","बादल","कोहरा","हल्की बारिश","बारिश","बर्फ","बारिश की बौछार","तूफ़ान","मौसम अपडेट"],
+profileMissing:"किसान विवरण अभी नहीं जोड़े गए हैं। किसान अनुभाग में विवरण जोड़ें।",
+profileLoaded:"आपकी किसान प्रोफ़ाइल लोड हो गई है।",
+profileError:"किसान विवरण लोड नहीं हो सके: ",
+noCity:"कृपया शहर का नाम दर्ज करें.",weatherServiceError:"मौसम सेवा उपलब्ध नहीं है.",
+unableCity:"शहर खोजने में असमर्थ."
+},
+te:{
+sidebarSubtitle:"స్మార్ట్ వ్యవసాయ వ్యవస్థ",
+mainSubtitle:"స్మార్ట్ వ్యవసాయం • మెరుగైన నిర్వహణ • మెరుగైన అభివృద్ధి",
+welcomeTitle:"మీ వ్యవసాయ డ్యాష్‌బోర్డ్‌కు స్వాగతం 👋",
+welcomeText:"మీ వ్యవసాయ కార్యకలాపాలన్నింటినీ ఒకే చోట నిర్వహించండి.",
+profileHeading:"👤 నా ప్రొఫైల్",farmerAccount:"రైతు ఖాతా",
+email:"📧 ఇమెయిల్",phone:"📱 ఫోన్ నంబర్",
+landArea:"🚜 భూమి విస్తీర్ణం",location:"📍 గ్రామం / ప్రాంతం",
+overview:"📊 వ్యవసాయ వివరాలు",farmers:"మొత్తం రైతులు",crops:"మొత్తం పంటలు",
+livestock:"మొత్తం పశువులు",land:"మొత్తం భూమి",expenses:"మొత్తం ఖర్చులు",
+announcementSection:"📢 నిర్వాహక ప్రకటనలు",announcementHeading:"నిర్వాహక తాజా సమాచారం",
+weatherSection:"🌦️ వాతావరణ సూచన",weatherHeading:"మీ పొలం వాతావరణాన్ని చూడండి",
+searchWeather:"వాతావరణం చూడండి",humidity:"తేమ",wind:"గాలి వేగం",
+feels:"అనుభూతి ఉష్ణోగ్రత",forecast:"📅 7 రోజుల సూచన",
+weatherNote:"Open-Meteo వాతావరణ సమాచారం. సూచనలు మారవచ్చు.",
+footer:"© 2026 Agritec | స్మార్ట్ వ్యవసాయం",
+navDashboard:"🏠 డ్యాష్‌బోర్డ్",navFarmers:"👨‍🌾 రైతులు",navCrops:"🌱 పంటలు",
+navLivestock:"🐄 పశువులు",navLand:"🚜 భూమి వివరాలు",navExpenses:"💰 ఖర్చులు",
+navMarket:"📈 మార్కెట్ ధర",navReports:"📊 నివేదికలు",navRecommendation:"🌾 పంట సలహా",
+navIrrigation:"💧 నీటిపారుదల",navPest:"🐛 తెగుళ్లు & వ్యాధులు",navFertilizer:"🌿 ఎరువులు",
+navSelling:"🛒 ఉత్పత్తుల విక్రయం",navRequests:"📦 వచ్చిన అభ్యర్థనలు",navLogout:"🚪 లాగ్ అవుట్",
+loading:"లోడ్ అవుతోంది...",notAvailable:"అందుబాటులో లేదు",notAdded:"జోడించలేదు",
+noAnnouncements:"ప్రస్తుతం ప్రకటనలు లేవు.",posted:"ప్రచురించిన తేదీ:",
+enterCity:"నగరం పేరు నమోదు చేయండి",loadingWeather:"వాతావరణ సమాచారం లోడ్ అవుతోంది...",
+cityNotFound:"నగరం కనబడలేదు. మరో నగరాన్ని ప్రయత్నించండి.",weatherError:"వాతావరణ సమాచారం పొందలేకపోయాము.",
+weatherConditions:["ఆకాశం స్పష్టంగా ఉంది","పాక్షిక మేఘాలు","మేఘావృతం","పొగమంచు","చినుకులు","వర్షం","మంచు","వర్షపు జల్లులు","ఉరుములతో కూడిన వర్షం","వాతావరణ సమాచారం"],
+profileMissing:"రైతు వివరాలు ఇంకా నమోదు చేయలేదు. రైతుల విభాగంలో వివరాలను జోడించండి.",
+profileLoaded:"మీ రైతు వివరాలు లోడ్ అయ్యాయి.",
+profileError:"రైతు వివరాలు లోడ్ కాలేదు: ",
+noCity:"దయచేసి నగరం పేరు నమోదు చేయండి.",weatherServiceError:"వాతావరణ సేవ అందుబాటులో లేదు.",
+unableCity:"నగరాన్ని కనుగొనలేకపోయాము."
+},
+ta:{
+sidebarSubtitle:"ஸ்மார்ட் வேளாண்மை அமைப்பு",
+mainSubtitle:"ஸ்மார்ட் விவசாயம் • சிறந்த மேலாண்மை • சிறந்த வளர்ச்சி",
+welcomeTitle:"உங்கள் பண்ணை டாஷ்போர்டுக்கு வரவேற்கிறோம் 👋",
+welcomeText:"உங்கள் விவசாய நடவடிக்கைகளை ஒரே இடத்தில் நிர்வகிக்கவும்.",
+profileHeading:"👤 எனது சுயவிவரம்",farmerAccount:"விவசாயி கணக்கு",
+email:"📧 மின்னஞ்சல்",phone:"📱 தொலைபேசி எண்",
+landArea:"🚜 நிலப்பரப்பு",location:"📍 கிராமம் / இடம்",
+overview:"📊 பண்ணை விவரங்கள்",farmers:"மொத்த விவசாயிகள்",crops:"மொத்த பயிர்கள்",
+livestock:"மொத்த கால்நடைகள்",land:"மொத்த நிலம்",expenses:"மொத்த செலவுகள்",
+announcementSection:"📢 நிர்வாக அறிவிப்புகள்",announcementHeading:"நிர்வாகத்தின் சமீபத்திய செய்திகள்",
+weatherSection:"🌦️ வானிலை முன்னறிவிப்பு",weatherHeading:"உங்கள் பண்ணை வானிலையைப் பார்க்கவும்",
+searchWeather:"வானிலையைப் பார்க்கவும்",humidity:"ஈரப்பதம்",wind:"காற்றின் வேகம்",
+feels:"உணரப்படும் வெப்பநிலை",forecast:"📅 7 நாள் முன்னறிவிப்பு",
+weatherNote:"Open-Meteo வானிலை தகவல். முன்னறிவிப்புகள் மாறலாம்.",
+footer:"© 2026 Agritec | ஸ்மார்ட் விவசாயம்",
+navDashboard:"🏠 டாஷ்போர்டு",navFarmers:"👨‍🌾 விவசாயிகள்",navCrops:"🌱 பயிர்கள்",
+navLivestock:"🐄 கால்நடைகள்",navLand:"🚜 நில விவரங்கள்",navExpenses:"💰 செலவுகள்",
+navMarket:"📈 சந்தை விலை",navReports:"📊 அறிக்கைகள்",navRecommendation:"🌾 பயிர் பரிந்துரை",
+navIrrigation:"💧 நீர்ப்பாசனம்",navPest:"🐛 பூச்சி & நோய்",navFertilizer:"🌿 உரம்",
+navSelling:"🛒 பொருட்கள் விற்பனை",navRequests:"📦 வந்த கோரிக்கைகள்",navLogout:"🚪 வெளியேறு",
+loading:"ஏற்றுகிறது...",notAvailable:"கிடைக்கவில்லை",notAdded:"சேர்க்கப்படவில்லை",
+noAnnouncements:"தற்போது அறிவிப்புகள் இல்லை.",posted:"வெளியிடப்பட்டது:",
+enterCity:"நகரத்தின் பெயரை உள்ளிடவும்",loadingWeather:"வானிலை தகவல் ஏற்றப்படுகிறது...",
+cityNotFound:"நகரம் கிடைக்கவில்லை. வேறு நகரத்தை முயற்சிக்கவும்.",weatherError:"வானிலை தகவலை ஏற்ற முடியவில்லை.",
+weatherConditions:["தெளிவான வானம்","ஓரளவு மேகமூட்டம்","மேகமூட்டம்","மூடுபனி","தூறல்","மழை","பனி","மழை பொழிவு","இடியுடன் கூடிய மழை","வானிலை தகவல்"],
+profileMissing:"விவசாயி விவரங்கள் இன்னும் சேர்க்கப்படவில்லை. விவசாயிகள் பகுதியில் சேர்க்கவும்.",
+profileLoaded:"உங்கள் விவசாயி விவரங்கள் ஏற்றப்பட்டன.",
+profileError:"விவசாயி விவரங்களை ஏற்ற முடியவில்லை: ",
+noCity:"நகரத்தின் பெயரை உள்ளிடவும்.",weatherServiceError:"வானிலை சேவை கிடைக்கவில்லை.",
+unableCity:"நகரத்தைக் கண்டறிய முடியவில்லை."
+}
+};
+
+
+/* ========== APPLY LANGUAGE ========== */
+
+let currentLang="en";
+
+function t(key){
+return translations[currentLang][key]||translations.en[key]||key;
+}
+
+function changeLanguage(lang){
+
+if(!translations[lang])return;
+
+currentLang=lang;
+
+localStorage.setItem("agritec_dashboard_language",lang);
+
+document.documentElement.lang=lang;
+
+const d=translations[lang];
+
+document.getElementById("sidebarSubtitle").textContent=d.sidebarSubtitle;
+document.getElementById("mainSubtitle").textContent=d.mainSubtitle;
+document.getElementById("welcomeTitle").textContent=d.welcomeTitle;
+document.getElementById("welcomeText").textContent=d.welcomeText;
+document.getElementById("profileSectionHeading").textContent=d.profileHeading;
+document.getElementById("farmerAccountText").textContent=d.farmerAccount;
+document.getElementById("emailLabel").textContent=d.email;
+document.getElementById("phoneLabel").textContent=d.phone;
+document.getElementById("landAreaLabel").textContent=d.landArea;
+document.getElementById("locationLabel").textContent=d.location;
+document.getElementById("overviewHeading").textContent=d.overview;
+document.getElementById("statFarmersLabel").textContent=d.farmers;
+document.getElementById("statCropsLabel").textContent=d.crops;
+document.getElementById("statLivestockLabel").textContent=d.livestock;
+document.getElementById("statLandLabel").textContent=d.land;
+document.getElementById("statExpensesLabel").textContent=d.expenses;
+document.getElementById("announcementSectionHeading").textContent=d.announcementSection;
+document.getElementById("announcementHeading").textContent=d.announcementHeading;
+document.getElementById("weatherSectionHeading").textContent=d.weatherSection;
+document.getElementById("weatherHeading").textContent=d.weatherHeading;
+document.getElementById("weatherSearchBtn").textContent=d.searchWeather;
+document.getElementById("humidityLabel").textContent=d.humidity;
+document.getElementById("windLabel").textContent=d.wind;
+document.getElementById("feelsLabel").textContent=d.feels;
+document.getElementById("forecastHeading").textContent=d.forecast;
+document.getElementById("weatherNote").textContent=d.weatherNote;
+document.getElementById("footerText").textContent=d.footer;
+document.getElementById("cityInput").placeholder=d.enterCity;
+
+document.querySelectorAll("[data-i]").forEach(el=>{
+const key=el.getAttribute("data-i");
+if(d[key])el.textContent=d[key];
+});
+
+renderAnnouncements();
+if(lastWeatherData)renderWeather(lastWeatherData);
+renderProfileMessage();
+renderHistoryLanguagePlaceholder();
+}
+
+
+/* ========== LOGOUT ========== */
+
+async function logout(){
+const {error}=await supabaseClient.auth.signOut();
+if(error){alert(error.message);return;}
+window.location.href="login.html";
+}
+
+
+/* ========== PROFILE ========== */
+
+let farmerRecord=null;
+let authUser=null;
+
+async function loadProfile(){
+
+const {data:authData,error:authError}=await supabaseClient.auth.getUser();
+
+if(authError||!authData.user){
+window.location.href="login.html";
+return;
+}
+
+authUser=authData.user;
+
+document.getElementById("profileEmail").textContent=authUser.email||t("notAvailable");
+
+const {data,error}=await supabaseClient
+.from("farmers")
+.select("farmer_name,phone,land_area,address")
+.eq("user_id",authUser.id)
+.order("id",{ascending:false})
+.limit(1);
+
+if(error){
+document.getElementById("profileName").textContent=authUser.user_metadata?.full_name||"Farmer";
+document.getElementById("profilePhone").textContent=t("notAvailable");
+document.getElementById("profileLand").textContent=t("notAvailable");
+document.getElementById("profileAddress").textContent=t("notAvailable");
+document.getElementById("profileMessage").textContent=t("profileError")+error.message;
+return;
+}
+
+farmerRecord=data&&data.length?data[0]:null;
+
+const name=farmerRecord?.farmer_name||authUser.user_metadata?.full_name||"Farmer";
+
+document.getElementById("profileName").textContent=name;
+document.getElementById("profileAvatar").textContent=name.trim().charAt(0).toUpperCase()||"F";
+document.getElementById("profilePhone").textContent=farmerRecord?.phone||t("notAdded");
+document.getElementById("profileLand").textContent=farmerRecord?.land_area!=null?farmerRecord.land_area+" Acres":t("notAdded");
+document.getElementById("profileAddress").textContent=farmerRecord?.address||t("notAdded");
+
+renderProfileMessage();
+}
+
+function renderProfileMessage(){
+if(!authUser)return;
+document.getElementById("profileMessage").textContent=
+farmerRecord?t("profileLoaded"):t("profileMissing");
+}
+
+
+/* ========== SUMMARY ========== */
+
+async function loadDashboardSummary(){
+
+const {data:authData,error:authError}=await supabaseClient.auth.getUser();
+
+if(authError||!authData.user){
+window.location.href="login.html";
+return;
+}
+
+const user=authData.user;
+
+const farmers=await supabaseClient.from("farmers")
+.select("id",{count:"exact",head:true}).eq("user_id",user.id);
+document.getElementById("totalFarmers").textContent=farmers.error?"Error":farmers.count;
+
+const crops=await supabaseClient.from("crops")
+.select("id",{count:"exact",head:true}).eq("user_id",user.id);
+document.getElementById("totalCrops").textContent=crops.error?"Error":crops.count;
+
+const livestock=await supabaseClient.from("livestock")
+.select("quantity").eq("user_id",user.id);
+
+if(livestock.error){
+document.getElementById("totalLivestock").textContent="Error";
+}else{
+document.getElementById("totalLivestock").textContent=
+livestock.data.reduce((sum,item)=>sum+Number(item.quantity||0),0);
+}
+
+const land=await supabaseClient.from("lands")
+.select("area").eq("user_id",user.id);
+
+if(land.error){
+document.getElementById("totalLand").textContent="Error";
+}else{
+const total=land.data.reduce((sum,item)=>sum+Number(item.area||0),0);
+document.getElementById("totalLand").textContent=total.toFixed(2)+" acres";
+}
+
+const expenses=await supabaseClient.from("expenses")
+.select("amount").eq("user_id",user.id);
+
+if(expenses.error){
+document.getElementById("totalExpenses").textContent="Error";
+}else{
+const total=expenses.data.reduce((sum,item)=>sum+Number(item.amount||0),0);
+document.getElementById("totalExpenses").textContent="₹"+total.toLocaleString("en-IN");
+}
+}
+
+
+/* ========== ANNOUNCEMENTS ========== */
+
+let announcementData=[];
+
+async function loadAnnouncements(){
+
+const container=document.getElementById("announcementsList");
+
+const {data:authData,error:authError}=await supabaseClient.auth.getUser();
+if(authError||!authData.user){window.location.href="login.html";return;}
+
+const {data,error}=await supabaseClient.from("announcements")
+.select("id,title,message,created_at")
+.order("created_at",{ascending:false});
+
+if(error){
+container.textContent="Unable to load announcements: "+error.message;
+return;
+}
+
+announcementData=data||[];
+renderAnnouncements();
+}
+
+function renderAnnouncements(){
+
+const container=document.getElementById("announcementsList");
+container.replaceChildren();
+
+if(!announcementData.length){
+const empty=document.createElement("p");
+empty.className="no-announcements";
+empty.textContent=t("noAnnouncements");
+container.appendChild(empty);
+return;
+}
+
+announcementData.forEach(item=>{
+
+const card=document.createElement("div");
+card.className="announcement-item";
+
+const title=document.createElement("h4");
+title.textContent=item.title||"Announcement";
+
+const message=document.createElement("p");
+message.textContent=item.message||"";
+
+const date=document.createElement("span");
+date.className="announcement-date";
+date.textContent=item.created_at?t("posted")+new Date(item.created_at).toLocaleString():"";
+
+card.append(title,message,date);
+container.appendChild(card);
+});
+}
+
+
+/* ========== WEATHER ========== */
+
+let lastWeatherData=null;
+
+function weatherInfo(code){
+
+const d=translations[currentLang].weatherConditions;
+
+if(code===0)return["☀️",d[0]];
+if([1,2].includes(code))return["🌤️",d[1]];
+if(code===3)return["☁️",d[2]];
+if([45,48].includes(code))return["🌫️",d[3]];
+if([51,53,55,56,57].includes(code))return["🌦️",d[4]];
+if([61,63,65,66,67].includes(code))return["🌧️",d[5]];
+if([71,73,75,77].includes(code))return["❄️",d[6]];
+if([80,81,82].includes(code))return["🌧️",d[7]];
+if([95,96,99].includes(code))return["⛈️",d[8]];
+return["🌤️",d[9]];
+}
+
+async function loadWeather(){
+
+const city=document.getElementById("cityInput").value.trim();
+const message=document.getElementById("weatherMessage");
+const result=document.getElementById("weatherResult");
+
+message.textContent="";
+result.style.display="none";
+
+if(!city){
+message.textContent=t("noCity");
+return;
+}
+
+message.textContent=t("loadingWeather");
+
+try{
+
+const geoURL="https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(city)+"&count=1&language=en&format=json";
+
+const geoResponse=await fetch(geoURL);
+if(!geoResponse.ok)throw new Error(t("unableCity"));
+
+const geoData=await geoResponse.json();
+if(!geoData.results||!geoData.results.length)throw new Error(t("cityNotFound"));
+
+const place=geoData.results[0];
+
+const weatherURL="https://api.open-meteo.com/v1/forecast"+
+"?latitude="+place.latitude+
+"&longitude="+place.longitude+
+"&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m"+
+"&daily=weather_code,temperature_2m_max,temperature_2m_min"+
+"&timezone=auto&forecast_days=7";
+
+const response=await fetch(weatherURL);
+if(!response.ok)throw new Error(t("weatherServiceError"));
+
+const data=await response.json();
+
+lastWeatherData={place,data};
+renderWeather(lastWeatherData);
+
+message.textContent="";
+result.style.display="block";
+
+}catch(error){
+message.textContent=error.message||t("weatherError");
+console.error(error);
+}
+}
+
+function renderWeather(obj){
+
+const {place,data}=obj;
+const current=data.current;
+const info=weatherInfo(current.weather_code);
+
+document.getElementById("weatherCity").textContent=place.name+", "+(place.country||"");
+document.getElementById("weatherIcon").textContent=info[0];
+document.getElementById("temperature").textContent=current.temperature_2m+"°C";
+document.getElementById("weatherCondition").textContent=info[1];
+document.getElementById("humidity").textContent=current.relative_humidity_2m+"%";
+document.getElementById("windSpeed").textContent=current.wind_speed_10m+" km/h";
+document.getElementById("feelsLike").textContent=current.apparent_temperature+"°C";
+
+const grid=document.getElementById("forecastGrid");
+grid.replaceChildren();
+
+data.daily.time.forEach((date,index)=>{
+
+const forecastInfo=weatherInfo(data.daily.weather_code[index]);
+const day=new Date(date+"T12:00:00").toLocaleDateString(
+currentLang==="en"?"en-IN":currentLang,
+{weekday:"short"}
+);
+
+const card=document.createElement("div");
+card.className="forecast-card";
+
+const h=document.createElement("h4");
+h.textContent=day;
+
+const icon=document.createElement("div");
+icon.textContent=forecastInfo[0];
+icon.style.fontSize="28px";
+
+const condition=document.createElement("p");
+condition.textContent=forecastInfo[1];
+
+const temperature=document.createElement("p");
+temperature.textContent=data.daily.temperature_2m_max[index]+"° / "+data.daily.temperature_2m_min[index]+"°";
+
+card.append(h,icon,condition,temperature);
+grid.appendChild(card);
+});
+}
+
+
+/* ========== INIT ========== */
+
+document.getElementById("cityInput").addEventListener("keydown",function(e){
+if(e.key==="Enter")loadWeather();
+});
+
+function renderHistoryLanguagePlaceholder(){}
+
+const savedLanguage=localStorage.getItem("agritec_dashboard_language")||"en";
+document.getElementById("languageSelect").value=savedLanguage;
+changeLanguage(savedLanguage);
+
+loadProfile();
+loadDashboardSummary();
+loadAnnouncements();
+loadWeather();
+</script>
+
+<script src="js/script.js"></script>
+</body>
+</html>

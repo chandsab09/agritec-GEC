@@ -1,0 +1,485 @@
+``
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farmer Management</title>
+
+<link rel="stylesheet" href="CSS/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+}
+
+.language-box {
+    width: 95%;
+    margin: 15px auto;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.language-box select {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+}
+
+.card {
+    width: 95%;
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 25px;
+}
+
+.card input {
+    width: 100%;
+    padding: 11px;
+    margin-top: 5px;
+}
+
+.card label {
+    font-weight: bold;
+}
+
+button {
+    padding: 10px 16px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.table-container {
+    width: 95%;
+    margin: 25px auto;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+th {
+    background: #2e7d32;
+    color: white;
+}
+
+.delete-btn {
+    background: #d32f2f;
+    color: white;
+}
+
+#message {
+    margin-top: 15px;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="language-box">
+    <select id="languageSelect">
+        <option value="en">English</option>
+        <option value="kn">ಕನ್ನಡ</option>
+        <option value="hi">हिन्दी</option>
+        <option value="te">తెలుగు</option>
+        <option value="ta">தமிழ்</option>
+    </select>
+</div>
+
+<h1 id="pageTitle">👨‍🌾 Farmer Management</h1>
+
+<div class="card">
+
+    <h2 id="addTitle">Add Farmer</h2>
+
+    <form id="farmerForm">
+
+        <label id="nameLabel">Farmer Name</label><br>
+        <input type="text" id="farmerName" required><br><br>
+
+        <label id="phoneLabel">Phone Number</label><br>
+        <input type="tel" id="phone" required><br><br>
+
+        <label id="landLabel">Land Area (Acres)</label><br>
+        <input type="number" id="land" min="0.01" step="0.01" required><br><br>
+
+        <label id="locationLabel">Location</label><br>
+        <input type="text" id="location" required><br><br>
+
+        <button type="submit" id="addButton">Add Farmer</button>
+
+        <button type="button" id="backButton" onclick="window.location.href='p.html'">
+            Back
+        </button>
+
+    </form>
+
+    <p id="message"></p>
+</div>
+
+<h2 id="viewTitle">📋 View Farmers</h2>
+
+<div class="table-container">
+
+<table>
+    <thead>
+        <tr>
+            <th id="thName">Name</th>
+            <th id="thPhone">Phone</th>
+            <th id="thLand">Land Area</th>
+            <th id="thLocation">Location</th>
+            <th id="thAction">Action</th>
+        </tr>
+    </thead>
+
+    <tbody id="farmerTable">
+        <tr>
+            <td colspan="5">Loading farmers...</td>
+        </tr>
+    </tbody>
+</table>
+
+</div>
+
+<script>
+
+const form = document.getElementById("farmerForm");
+const message = document.getElementById("message");
+const table = document.getElementById("farmerTable");
+const languageSelect = document.getElementById("languageSelect");
+
+let currentLanguage =
+    localStorage.getItem("agritec_dashboard_language") || "en";
+
+const translations = {
+
+en: {
+    pageTitle: "👨‍🌾 Farmer Management",
+    addTitle: "Add Farmer",
+    name: "Farmer Name",
+    phone: "Phone Number",
+    land: "Land Area (Acres)",
+    location: "Location",
+    add: "Add Farmer",
+    back: "Back",
+    view: "📋 View Farmers",
+    thName: "Name",
+    thPhone: "Phone",
+    thLand: "Land Area",
+    thLocation: "Location",
+    thAction: "Action",
+    loading: "Loading farmers...",
+    login: "Please login first!",
+    noFarmers: "No farmers added yet.",
+    delete: "Delete",
+    confirm: "Are you sure you want to delete this farmer?",
+    added: "Farmer added successfully!",
+    deleted: "Farmer deleted successfully!",
+    error: "Error: ",
+    deleteError: "Delete error: "
+},
+
+kn: {
+    pageTitle: "👨‍🌾 ರೈತರ ನಿರ್ವಹಣೆ",
+    addTitle: "ರೈತರನ್ನು ಸೇರಿಸಿ",
+    name: "ರೈತರ ಹೆಸರು",
+    phone: "ಫೋನ್ ಸಂಖ್ಯೆ",
+    land: "ಭೂಮಿ (ಎಕರೆ)",
+    location: "ಸ್ಥಳ",
+    add: "ರೈತರನ್ನು ಸೇರಿಸಿ",
+    back: "ಹಿಂದಕ್ಕೆ",
+    view: "📋 ರೈತರ ವಿವರಗಳು",
+    thName: "ಹೆಸರು",
+    thPhone: "ಫೋನ್",
+    thLand: "ಭೂಮಿ",
+    thLocation: "ಸ್ಥಳ",
+    thAction: "ಕಾರ್ಯ",
+    loading: "ರೈತರ ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+    login: "ದಯವಿಟ್ಟು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ!",
+    noFarmers: "ಇನ್ನೂ ಯಾವುದೇ ರೈತರನ್ನು ಸೇರಿಸಿಲ್ಲ.",
+    delete: "ಅಳಿಸಿ",
+    confirm: "ಈ ರೈತರನ್ನು ಅಳಿಸಲು ನೀವು ಖಚಿತವಾಗಿದ್ದೀರಾ?",
+    added: "ರೈತರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸೇರಿಸಲಾಗಿದೆ!",
+    deleted: "ರೈತರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ!",
+    error: "ದೋಷ: ",
+    deleteError: "ಅಳಿಸುವಿಕೆಯ ದೋಷ: "
+},
+
+hi: {
+    pageTitle: "👨‍🌾 किसान प्रबंधन",
+    addTitle: "किसान जोड़ें",
+    name: "किसान का नाम",
+    phone: "फोन नंबर",
+    land: "भूमि (एकड़)",
+    location: "स्थान",
+    add: "किसान जोड़ें",
+    back: "वापस",
+    view: "📋 किसानों की सूची",
+    thName: "नाम",
+    thPhone: "फोन",
+    thLand: "भूमि",
+    thLocation: "स्थान",
+    thAction: "कार्य",
+    loading: "किसानों की जानकारी लोड हो रही है...",
+    login: "कृपया पहले लॉगिन करें!",
+    noFarmers: "अभी तक कोई किसान नहीं जोड़ा गया है।",
+    delete: "हटाएं",
+    confirm: "क्या आप इस किसान को हटाना चाहते हैं?",
+    added: "किसान सफलतापूर्वक जोड़ा गया!",
+    deleted: "किसान सफलतापूर्वक हटाया गया!",
+    error: "त्रुटि: ",
+    deleteError: "हटाने में त्रुटि: "
+},
+
+te: {
+    pageTitle: "👨‍🌾 రైతుల నిర్వహణ",
+    addTitle: "రైతును జోడించండి",
+    name: "రైతు పేరు",
+    phone: "ఫోన్ నంబర్",
+    land: "భూమి (ఎకరాలు)",
+    location: "ప్రాంతం",
+    add: "రైతును జోడించండి",
+    back: "వెనక్కి",
+    view: "📋 రైతుల వివరాలు",
+    thName: "పేరు",
+    thPhone: "ఫోన్",
+    thLand: "భూమి",
+    thLocation: "ప్రాంతం",
+    thAction: "చర్య",
+    loading: "రైతుల వివరాలు లోడ్ అవుతున్నాయి...",
+    login: "దయచేసి ముందుగా లాగిన్ అవ్వండి!",
+    noFarmers: "ఇంకా రైతులు జోడించబడలేదు.",
+    delete: "తొలగించు",
+    confirm: "ఈ రైతును తొలగించాలా?",
+    added: "రైతు విజయవంతంగా జోడించబడ్డారు!",
+    deleted: "రైతు విజయవంతంగా తొలగించబడ్డారు!",
+    error: "లోపం: ",
+    deleteError: "తొలగింపు లోపం: "
+},
+
+ta: {
+    pageTitle: "👨‍🌾 விவசாயிகள் மேலாண்மை",
+    addTitle: "விவசாயியைச் சேர்க்கவும்",
+    name: "விவசாயியின் பெயர்",
+    phone: "தொலைபேசி எண்",
+    land: "நிலப்பரப்பு (ஏக்கர்)",
+    location: "இடம்",
+    add: "விவசாயியைச் சேர்க்கவும்",
+    back: "பின்செல்",
+    view: "📋 விவசாயிகள் விவரம்",
+    thName: "பெயர்",
+    thPhone: "தொலைபேசி",
+    thLand: "நிலப்பரப்பு",
+    thLocation: "இடம்",
+    thAction: "செயல்",
+    loading: "விவசாயிகள் விவரங்கள் ஏற்றப்படுகின்றன...",
+    login: "முதலில் உள்நுழையவும்!",
+    noFarmers: "இன்னும் விவசாயிகள் சேர்க்கப்படவில்லை.",
+    delete: "நீக்கு",
+    confirm: "இந்த விவசாயியை நீக்க விரும்புகிறீர்களா?",
+    added: "விவசாயி வெற்றிகரமாக சேர்க்கப்பட்டார்!",
+    deleted: "விவசாயி வெற்றிகரமாக நீக்கப்பட்டார்!",
+    error: "பிழை: ",
+    deleteError: "நீக்குவதில் பிழை: "
+}
+
+};
+
+
+// LANGUAGE CHANGE
+
+function changeLanguage(lang) {
+
+    currentLanguage = lang;
+
+    localStorage.setItem("agritec_dashboard_language", lang);
+
+    const t = translations[lang];
+
+    document.documentElement.lang = lang;
+
+    document.getElementById("pageTitle").textContent = t.pageTitle;
+    document.getElementById("addTitle").textContent = t.addTitle;
+
+    document.getElementById("nameLabel").textContent = t.name;
+    document.getElementById("phoneLabel").textContent = t.phone;
+    document.getElementById("landLabel").textContent = t.land;
+    document.getElementById("locationLabel").textContent = t.location;
+
+    document.getElementById("addButton").textContent = t.add;
+    document.getElementById("backButton").textContent = t.back;
+
+    document.getElementById("viewTitle").textContent = t.view;
+
+    document.getElementById("thName").textContent = t.thName;
+    document.getElementById("thPhone").textContent = t.thPhone;
+    document.getElementById("thLand").textContent = t.thLand;
+    document.getElementById("thLocation").textContent = t.thLocation;
+    document.getElementById("thAction").textContent = t.thAction;
+
+    languageSelect.value = lang;
+
+    loadFarmers();
+}
+
+languageSelect.addEventListener("change", function() {
+    changeLanguage(this.value);
+});
+
+
+// ADD FARMER
+
+form.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const t = translations[currentLanguage];
+
+    const { data: userData, error: userError } =
+        await supabaseClient.auth.getUser();
+
+    if (userError || !userData.user) {
+        alert(t.login);
+        window.location.href = "login.html";
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("farmers")
+        .insert([{
+            farmer_name: document.getElementById("farmerName").value.trim(),
+            phone: document.getElementById("phone").value.trim(),
+            land_area: Number(document.getElementById("land").value),
+            address: document.getElementById("location").value.trim(),
+            user_id: userData.user.id
+        }]);
+
+    if (error) {
+        message.innerText = t.error + error.message;
+    } else {
+        message.innerText = t.added;
+        form.reset();
+        loadFarmers();
+    }
+});
+
+
+// LOAD FARMERS
+
+async function loadFarmers() {
+
+    const t = translations[currentLanguage];
+
+    const { data: userData, error: userError } =
+        await supabaseClient.auth.getUser();
+
+    if (userError || !userData.user) {
+        table.innerHTML =
+            `<tr><td colspan="5">${t.login}</td></tr>`;
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("farmers")
+        .select("*")
+        .order("id", { ascending: false });
+
+    if (error) {
+        table.innerHTML =
+            `<tr><td colspan="5">${t.error}${error.message}</td></tr>`;
+        return;
+    }
+
+    table.innerHTML = "";
+
+    if (!data || data.length === 0) {
+        table.innerHTML =
+            `<tr><td colspan="5">${t.noFarmers}</td></tr>`;
+        return;
+    }
+
+    data.forEach(farmer => {
+
+        const row = document.createElement("tr");
+
+        const values = [
+            farmer.farmer_name,
+            farmer.phone,
+            farmer.land_area + " Acres",
+            farmer.address
+        ];
+
+        values.forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = value ?? "";
+            row.appendChild(cell);
+        });
+
+        const actionCell = document.createElement("td");
+
+        const deleteButton = document.createElement("button");
+
+        deleteButton.textContent = t.delete;
+        deleteButton.className = "delete-btn";
+
+        deleteButton.addEventListener("click", function() {
+            deleteFarmer(farmer.id);
+        });
+
+        actionCell.appendChild(deleteButton);
+        row.appendChild(actionCell);
+
+        table.appendChild(row);
+    });
+}
+
+
+// DELETE FARMER
+
+async function deleteFarmer(id) {
+
+    const t = translations[currentLanguage];
+
+    if (!confirm(t.confirm)) {
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("farmers")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        alert(t.deleteError + error.message);
+    } else {
+        alert(t.deleted);
+        loadFarmers();
+    }
+}
+
+
+// INITIAL LOAD
+
+changeLanguage(currentLanguage);
+
+</script>
+
+</body>
+</html>

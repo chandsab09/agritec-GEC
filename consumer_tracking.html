@@ -1,0 +1,465 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>My Order Tracking</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f3f7f3;
+    color: #26352b;
+}
+
+header {
+    background: linear-gradient(135deg, #064e32, #2e8b57);
+    color: white;
+    padding: 25px;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 25px;
+}
+
+.top-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 25px;
+}
+
+button {
+    padding: 11px 17px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.back-btn {
+    background: #064e32;
+    color: white;
+}
+
+.refresh-btn {
+    background: #dcefe2;
+    color: #064e32;
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.summary-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px #0000000d;
+}
+
+.summary-card h3 {
+    color: #657568;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.summary-card p {
+    color: #176b3b;
+    font-size: 27px;
+    font-weight: bold;
+}
+
+.auto-update {
+    background: #e5f4e9;
+    color: #176b3b;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.orders {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.order-card {
+    background: white;
+    padding: 22px;
+    border-radius: 13px;
+    box-shadow: 0 3px 12px #0000000d;
+    border-left: 5px solid #2e8b57;
+}
+
+.order-card h2 {
+    color: #176b3b;
+    margin-bottom: 15px;
+}
+
+.info {
+    margin: 10px 0;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+}
+
+.status {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 25px;
+    font-weight: bold;
+    margin: 12px 0;
+}
+
+.pending {
+    background: #fff2cc;
+    color: #946200;
+}
+
+.accepted {
+    background: #d8f3dc;
+    color: #176b3b;
+}
+
+.rejected {
+    background: #ffe0e0;
+    color: #a52828;
+}
+
+.cancelled {
+    background: #e5e5e5;
+    color: #555;
+}
+
+.cancel-btn {
+    width: 100%;
+    background: #dc3545;
+    color: white;
+    margin-top: 12px;
+}
+
+.cancel-btn:hover {
+    background: #b02a37;
+}
+
+.cancel-btn:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+}
+
+#loading, #empty, #error {
+    text-align: center;
+    padding: 30px;
+    background: white;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+#empty, #error {
+    display: none;
+}
+
+#error {
+    color: #b42318;
+}
+
+@media(max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>📦 My Order Tracking</h1>
+    <p>Track and manage your product requests</p>
+</header>
+
+<div class="container">
+
+    <div class="top-buttons">
+
+        <button class="back-btn" onclick="location.href='consumer.html'">
+            ← Marketplace
+        </button>
+
+        <button class="refresh-btn" onclick="loadOrders()">
+            🔄 Refresh Now
+        </button>
+
+    </div>
+
+    <div class="auto-update">
+        🔄 Order status automatically refreshes every 10 seconds.
+    </div>
+
+    <div class="summary">
+
+        <div class="summary-card">
+            <h3>Total Orders</h3>
+            <p id="total">0</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Pending</h3>
+            <p id="pending">0</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Accepted</h3>
+            <p id="accepted">0</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Rejected</h3>
+            <p id="rejected">0</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Cancelled</h3>
+            <p id="cancelled">0</p>
+        </div>
+
+    </div>
+
+    <div id="loading">Loading your orders...</div>
+
+    <div id="error"></div>
+
+    <div id="empty">
+        You haven't placed any requests yet.
+    </div>
+
+    <div class="orders" id="ordersContainer"></div>
+
+</div>
+
+<script>
+
+let currentUser = null;
+let myOrders = [];
+let refreshInterval = null;
+
+async function initialize() {
+
+    const { data, error } = await supabaseClient.auth.getUser();
+
+    if (error || !data.user) {
+        alert("Please login first.");
+        location.href = "index.html";
+        return;
+    }
+
+    currentUser = data.user;
+
+    await loadOrders();
+
+    refreshInterval = setInterval(loadOrders, 10000);
+}
+
+async function loadOrders() {
+
+    document.getElementById("loading").style.display = "block";
+    document.getElementById("empty").style.display = "none";
+    document.getElementById("error").style.display = "none";
+
+    const { data, error } = await supabaseClient
+        .from("consumer_orders")
+        .select("*")
+        .eq("consumer_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+    document.getElementById("loading").style.display = "none";
+
+    if (error) {
+
+        document.getElementById("error").style.display = "block";
+        document.getElementById("error").textContent =
+            "Error loading orders: " + error.message;
+
+        return;
+    }
+
+    myOrders = data || [];
+
+    updateSummary();
+    displayOrders();
+}
+
+function updateSummary() {
+
+    document.getElementById("total").textContent =
+        myOrders.length;
+
+    document.getElementById("pending").textContent =
+        myOrders.filter(o => o.status === "Pending").length;
+
+    document.getElementById("accepted").textContent =
+        myOrders.filter(o => o.status === "Accepted").length;
+
+    document.getElementById("rejected").textContent =
+        myOrders.filter(o => o.status === "Rejected").length;
+
+    document.getElementById("cancelled").textContent =
+        myOrders.filter(o => o.status === "Cancelled").length;
+}
+
+function displayOrders() {
+
+    const container = document.getElementById("ordersContainer");
+
+    container.innerHTML = "";
+
+    if (myOrders.length === 0) {
+
+        document.getElementById("empty").style.display = "block";
+        return;
+    }
+
+    document.getElementById("empty").style.display = "none";
+
+    myOrders.forEach(order => {
+
+        const status = order.status || "Pending";
+
+        const statusClass =
+            status === "Accepted" ? "accepted" :
+            status === "Rejected" ? "rejected" :
+            status === "Cancelled" ? "cancelled" :
+            "pending";
+
+        const date = order.created_at
+            ? new Date(order.created_at).toLocaleString()
+            : "N/A";
+
+        const card = document.createElement("div");
+
+        card.className = "order-card";
+
+        card.innerHTML = `
+            <h2>🌾 ${escapeHTML(order.product_name || "Product")}</h2>
+
+            <div class="info">
+                <strong>Order ID:</strong> ${order.id}
+            </div>
+
+            <div class="info">
+                <strong>Category:</strong>
+                ${escapeHTML(order.product_type || "N/A")}
+            </div>
+
+            <div class="info">
+                <strong>Quantity:</strong>
+                ${escapeHTML(String(order.quantity ?? ""))}
+            </div>
+
+            <div class="info">
+                <strong>Request Date:</strong>
+                ${escapeHTML(date)}
+            </div>
+
+            <div class="info">
+                <strong>Message:</strong>
+                ${escapeHTML(order.message || "No message")}
+            </div>
+
+            <div>
+                <span class="status ${statusClass}">
+                    ${escapeHTML(status)}
+                </span>
+            </div>
+
+            ${
+                status === "Pending"
+                ? `
+                    <button
+                        class="cancel-btn"
+                        onclick="cancelOrder(${order.id}, this)">
+                        ✕ Cancel Request
+                    </button>
+                `
+                : ""
+            }
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+async function cancelOrder(orderId, button) {
+
+    const confirmCancel = confirm(
+        "Are you sure you want to cancel this request?"
+    );
+
+    if (!confirmCancel) return;
+
+    button.disabled = true;
+    button.textContent = "Cancelling...";
+
+    const { data, error } = await supabaseClient
+        .from("consumer_orders")
+        .update({ status: "Cancelled" })
+        .eq("id", orderId)
+        .eq("consumer_id", currentUser.id)
+        .eq("status", "Pending")
+        .select();
+
+    if (error) {
+
+        alert("Cancellation failed: " + error.message);
+
+        button.disabled = false;
+        button.textContent = "✕ Cancel Request";
+
+        return;
+    }
+
+    if (!data || data.length === 0) {
+
+        alert("This request is no longer Pending and cannot be cancelled.");
+
+        await loadOrders();
+        return;
+    }
+
+    alert("Request cancelled successfully!");
+
+    await loadOrders();
+}
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+initialize();
+
+</script>
+
+</body>
+</html>

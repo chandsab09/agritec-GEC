@@ -1,0 +1,863 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agritec - AI Crop Health</title>
+
+<link rel="stylesheet" href="CSS/style.css">
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f3f7f2;
+    color: #263b2c;
+}
+
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 250px;
+    background: #145c35;
+    color: white;
+    padding: 25px 15px;
+    flex-shrink: 0;
+}
+
+.sidebar h2 {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #c9e7d1;
+    font-size: 13px;
+    margin-bottom: 25px;
+}
+
+.sidebar nav a {
+    display: block;
+    padding: 12px;
+    margin: 5px 0;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+    background: #287c4a;
+}
+
+.main {
+    flex: 1;
+    min-width: 0;
+    padding: 25px;
+}
+
+.header {
+    background: linear-gradient(120deg, #176b35, #3b9c58);
+    color: white;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 22px;
+}
+
+.header h1 {
+    margin-bottom: 8px;
+}
+
+.header p {
+    color: #e0f5e5;
+}
+
+.card {
+    background: white;
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 22px;
+    box-shadow: 0 3px 12px rgba(0,0,0,.05);
+}
+
+.card h2,
+.card h3 {
+    color: #176b35;
+    margin-bottom: 15px;
+}
+
+.upload-area {
+    border: 2px dashed #6eaa7c;
+    border-radius: 13px;
+    background: #f5fbf5;
+    padding: 30px 15px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    background: #eaf6ec;
+}
+
+.upload-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+}
+
+.upload-area p {
+    margin: 8px 0;
+    color: #526456;
+}
+
+.upload-area button {
+    background: #269b50;
+    color: white;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 12px;
+}
+
+#photoInput {
+    display: none;
+}
+
+.preview-container {
+    display: none;
+    margin-top: 20px;
+    text-align: center;
+}
+
+#imagePreview {
+    max-width: 100%;
+    max-height: 350px;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+}
+
+.photo-actions {
+    margin-top: 12px;
+}
+
+.photo-actions button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    margin: 5px;
+}
+
+.remove-btn {
+    background: #ffebee;
+    color: #b71c1c;
+}
+
+.analyze-btn {
+    background: #176b35;
+    color: white;
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 9px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.analyze-btn:hover {
+    background: #287c4a;
+}
+
+.analyze-btn:disabled {
+    background: #999;
+    cursor: not-allowed;
+}
+
+.input-group {
+    margin: 15px 0;
+}
+
+.input-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.weather-box {
+    background: #eaf5ff;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.weather-current {
+    text-align: center;
+    padding: 15px;
+}
+
+.weather-icon {
+    font-size: 45px;
+}
+
+.weather-temperature {
+    font-size: 32px;
+    font-weight: bold;
+    color: #176b35;
+    margin: 8px;
+}
+
+.weather-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.weather-detail {
+    background: white;
+    padding: 15px;
+    border-radius: 9px;
+    text-align: center;
+}
+
+.weather-detail h4 {
+    font-size: 13px;
+    color: #526456;
+    margin: 8px 0;
+}
+
+.weather-detail p {
+    font-weight: bold;
+    color: #176b35;
+}
+
+.forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.forecast-card {
+    background: white;
+    padding: 14px;
+    border-radius: 9px;
+    text-align: center;
+}
+
+.forecast-card p {
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.weather-message {
+    margin: 12px 0;
+    color: #b71c1c;
+}
+
+.status-box {
+    background: #fff8e1;
+    border-left: 4px solid #e5a000;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    line-height: 1.6;
+}
+
+.info-box {
+    background: #f1f7f1;
+    border-radius: 9px;
+    padding: 15px;
+    margin-top: 15px;
+    line-height: 1.6;
+}
+
+.small-note {
+    color: #647568;
+    font-size: 12px;
+    margin-top: 12px;
+}
+
+footer {
+    text-align: center;
+    color: #647568;
+    padding: 20px;
+}
+
+@media(max-width:800px) {
+    .layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .sidebar nav {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px;
+    }
+
+    .main {
+        padding: 15px;
+    }
+}
+
+@media(max-width:450px) {
+    .sidebar nav {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+
+<aside class="sidebar">
+
+<h2>🌾 Agritec</h2>
+<p class="subtitle">Smart Agriculture System</p>
+
+<nav>
+<a href="p.html">🏠 Dashboard</a>
+<a href="farmers.html">👨‍🌾 Farmers</a>
+<a href="crops.html">🌱 Crops</a>
+<a href="livestock.html">🐄 Livestock</a>
+<a href="land.html">🚜 Land Details</a>
+<a href="expenses.html">💰 Expenses</a>
+<a href="market_price.html">📈 Market Price</a>
+<a href="reports.html">📊 Reports</a>
+<a href="crop_recommendation.html">🌾 Crop Recommendation</a>
+<a href="irrigation.html">💧 Irrigation</a>
+<a href="pest_disease.html" class="active">🐛 AI Crop Health</a>
+<a href="fertilizer.html">🌿 Fertilizer</a>
+<a href="selling.html">🛒 Selling Products</a>
+<a href="farmer_requests.html">📦 Incoming Requests</a>
+</nav>
+
+</aside>
+
+<main class="main">
+
+<header class="header">
+<h1>🌿 AI Crop Health Analysis</h1>
+<p>Upload a crop photo to analyse crop health and explore possible disease causes.</p>
+</header>
+
+<!-- PHOTO UPLOAD -->
+
+<section class="card">
+
+<h2>📷 Upload Crop Photo</h2>
+
+<div class="upload-area" onclick="document.getElementById('photoInput').click()">
+
+<div class="upload-icon">📸</div>
+
+<h3>Choose a crop photo</h3>
+
+<p>Upload a clear photo of the affected leaf or plant.</p>
+
+<p>Supported formats: JPG, PNG, WEBP</p>
+
+<button type="button">Choose Photo</button>
+
+<input
+type="file"
+id="photoInput"
+accept="image/jpeg,image/png,image/webp"
+>
+
+</div>
+
+<div class="preview-container" id="previewContainer">
+
+<img id="imagePreview" alt="Crop photo preview">
+
+<div class="photo-actions">
+<button class="remove-btn" onclick="removePhoto()">
+Remove Photo
+</button>
+</div>
+
+</div>
+
+<div class="input-group">
+
+<label for="cropName">Crop Name (optional)</label>
+
+<input
+type="text"
+id="cropName"
+placeholder="Example: Tomato, Rice, Cotton"
+>
+
+</div>
+
+<button
+class="analyze-btn"
+id="analyzeButton"
+onclick="startAnalysis()"
+>
+
+🤖 Analyse Crop Photo
+
+</button>
+
+<div id="analysisStatus"></div>
+
+<div class="small-note">
+AI diagnosis is not connected yet. This page currently prepares
+the photo and weather context. It will not generate fake disease results.
+</div>
+
+</section>
+
+<!-- WEATHER CONTEXT -->
+
+<section class="card">
+
+<h2>🌦️ Weather Context</h2>
+
+<p>
+Weather conditions can help contextualize possible crop problems.
+They cannot confirm a disease on their own.
+</p>
+
+<div class="input-group">
+
+<label for="cityInput">Farm Location / City</label>
+
+<input
+type="text"
+id="cityInput"
+value="Bengaluru"
+placeholder="Enter city name"
+>
+
+</div>
+
+<button
+class="analyze-btn"
+onclick="loadWeather()"
+>
+
+🌦️ Check Weather
+
+</button>
+
+<p id="weatherMessage" class="weather-message"></p>
+
+<div id="weatherResult" style="display:none;">
+
+<div class="weather-box">
+
+<div class="weather-current">
+
+<h3 id="weatherCity"></h3>
+
+<div class="weather-icon" id="weatherIcon">🌤️</div>
+
+<div class="weather-temperature" id="temperature">--°C</div>
+
+<p id="weatherCondition"></p>
+
+</div>
+
+<div class="weather-details">
+
+<div class="weather-detail">
+💧
+<h4>Humidity</h4>
+<p id="humidity">--%</p>
+</div>
+
+<div class="weather-detail">
+🌧️
+<h4>Rain</h4>
+<p id="rain">-- mm</p>
+</div>
+
+<div class="weather-detail">
+🌬️
+<h4>Wind</h4>
+<p id="wind">-- km/h</p>
+</div>
+
+<div class="weather-detail">
+🌡️
+<h4>Feels Like</h4>
+<p id="feelsLike">--°C</p>
+</div>
+
+</div>
+
+<h3 style="margin-top:25px;">📅 3-Day Forecast</h3>
+
+<div class="forecast-grid" id="forecastGrid"></div>
+
+</div>
+
+<p class="small-note">
+Weather data provided by Open-Meteo. Weather is environmental context,
+not a disease diagnosis.
+</p>
+
+</section>
+
+<!-- FUTURE ANALYSIS OUTPUT -->
+
+<section class="card">
+
+<h2>🔬 AI Analysis Results</h2>
+
+<div class="info-box" id="resultPlaceholder">
+
+Your crop analysis will appear here after the AI connection is completed.
+
+<br><br>
+
+The planned analysis includes:
+
+<ul style="margin:12px 0 0 20px;line-height:1.8;">
+
+<li>Crop identification</li>
+<li>Possible disease or pest identification</li>
+<li>Visible symptoms</li>
+<li>Possible causes</li>
+<li>Treatment guidance</li>
+<li>Prevention recommendations</li>
+<li>Weather context</li>
+<li>AI confidence and uncertainty</li>
+
+</ul>
+
+</div>
+
+</section>
+
+<footer>
+© 2026 Agritec | Smart Agriculture
+</footer>
+
+</main>
+</div>
+
+<script>
+
+// PHOTO UPLOAD
+
+let selectedPhoto = null;
+
+const photoInput = document.getElementById("photoInput");
+
+photoInput.addEventListener("change", function(event) {
+
+const file = event.target.files[0];
+
+if (!file) return;
+
+const allowedTypes = [
+"image/jpeg",
+"image/png",
+"image/webp"
+];
+
+if (!allowedTypes.includes(file.type)) {
+
+alert("Please upload a JPG, PNG or WEBP image.");
+
+photoInput.value = "";
+return;
+
+}
+
+if (file.size > 10 * 1024 * 1024) {
+
+alert("Photo size must be below 10 MB.");
+
+photoInput.value = "";
+return;
+
+}
+
+selectedPhoto = file;
+
+const preview = document.getElementById("imagePreview");
+
+preview.src = URL.createObjectURL(file);
+
+document.getElementById("previewContainer").style.display = "block";
+
+document.getElementById("analysisStatus").innerHTML = "";
+
+});
+
+
+// REMOVE PHOTO
+
+function removePhoto() {
+
+selectedPhoto = null;
+
+photoInput.value = "";
+
+document.getElementById("imagePreview").src = "";
+
+document.getElementById("previewContainer").style.display = "none";
+
+document.getElementById("analysisStatus").innerHTML = "";
+
+}
+
+
+// ANALYSIS PLACEHOLDER
+
+function startAnalysis() {
+
+const status = document.getElementById("analysisStatus");
+
+if (!selectedPhoto) {
+
+status.innerHTML = `
+<div class="status-box">
+Please upload a crop photo first.
+</div>
+`;
+
+return;
+
+}
+
+status.innerHTML = `
+<div class="status-box">
+Photo uploaded successfully.
+
+<br><br>
+
+The actual AI image-analysis connection is still pending.
+No disease diagnosis will be displayed until a real AI model is connected.
+</div>
+`;
+
+}
+
+
+// WEATHER CODES
+
+function getWeatherInfo(code) {
+
+if (code === 0) return ["☀️", "Clear Sky"];
+
+if ([1,2].includes(code)) return ["🌤️", "Partly Cloudy"];
+
+if (code === 3) return ["☁️", "Overcast"];
+
+if ([45,48].includes(code)) return ["🌫️", "Fog"];
+
+if ([51,53,55,56,57].includes(code)) return ["🌦️", "Drizzle"];
+
+if ([61,63,65,66,67].includes(code)) return ["🌧️", "Rain"];
+
+if ([71,73,75,77].includes(code)) return ["❄️", "Snow"];
+
+if ([80,81,82].includes(code)) return ["🌧️", "Rain Showers"];
+
+if ([95,96,99].includes(code)) return ["⛈️", "Thunderstorm"];
+
+return ["🌤️", "Weather Update"];
+
+}
+
+
+// WEATHER API
+
+async function loadWeather() {
+
+const city = document.getElementById("cityInput").value.trim();
+
+const message = document.getElementById("weatherMessage");
+
+const result = document.getElementById("weatherResult");
+
+message.textContent = "";
+
+result.style.display = "none";
+
+if (!city) {
+
+message.textContent = "Please enter your farm location.";
+
+return;
+
+}
+
+message.textContent = "Loading weather information...";
+
+try {
+
+const geoURL =
+"https://geocoding-api.open-meteo.com/v1/search?name=" +
+encodeURIComponent(city) +
+"&count=1&language=en&format=json";
+
+const geoResponse = await fetch(geoURL);
+
+if (!geoResponse.ok) {
+throw new Error("Location service unavailable.");
+}
+
+const geoData = await geoResponse.json();
+
+if (!geoData.results || geoData.results.length === 0) {
+throw new Error("Location not found.");
+}
+
+const place = geoData.results[0];
+
+const weatherURL =
+"https://api.open-meteo.com/v1/forecast" +
+"?latitude=" + place.latitude +
+"&longitude=" + place.longitude +
+"&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,rain" +
+"&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+"&timezone=auto&forecast_days=3";
+
+const weatherResponse = await fetch(weatherURL);
+
+if (!weatherResponse.ok) {
+throw new Error("Weather service unavailable.");
+}
+
+const data = await weatherResponse.json();
+
+const current = data.current;
+
+const info = getWeatherInfo(current.weather_code);
+
+document.getElementById("weatherCity").textContent =
+place.name + ", " + (place.country || "");
+
+document.getElementById("weatherIcon").textContent = info[0];
+
+document.getElementById("temperature").textContent =
+current.temperature_2m + "°C";
+
+document.getElementById("weatherCondition").textContent = info[1];
+
+document.getElementById("humidity").textContent =
+current.relative_humidity_2m + "%";
+
+document.getElementById("rain").textContent =
+current.rain + " mm";
+
+document.getElementById("wind").textContent =
+current.wind_speed_10m + " km/h";
+
+document.getElementById("feelsLike").textContent =
+current.apparent_temperature + "°C";
+
+
+// FORECAST
+
+const grid = document.getElementById("forecastGrid");
+
+grid.innerHTML = "";
+
+data.daily.time.forEach((date, index) => {
+
+const forecastInfo =
+getWeatherInfo(data.daily.weather_code[index]);
+
+const day = new Date(date + "T12:00:00")
+.toLocaleDateString("en-IN", {
+weekday: "short"
+});
+
+const card = document.createElement("div");
+
+card.className = "forecast-card";
+
+const heading = document.createElement("h4");
+heading.textContent = day;
+
+const icon = document.createElement("div");
+icon.textContent = forecastInfo[0];
+icon.style.fontSize = "28px";
+
+const condition = document.createElement("p");
+condition.textContent = forecastInfo[1];
+
+const temperature = document.createElement("p");
+
+temperature.textContent =
+data.daily.temperature_2m_max[index] +
+"° / " +
+data.daily.temperature_2m_min[index] +
+"°";
+
+card.append(heading, icon, condition, temperature);
+
+grid.appendChild(card);
+
+});
+
+result.style.display = "block";
+
+message.textContent = "";
+
+} catch (error) {
+
+message.textContent =
+error.message || "Unable to load weather information.";
+
+console.error(error);
+
+}
+
+}
+
+
+// ENTER KEY
+
+document.getElementById("cityInput")
+.addEventListener("keydown", function(event) {
+
+if (event.key === "Enter") {
+loadWeather();
+}
+
+});
+
+
+// START
+
+loadWeather();
+
+</script>
+
+</body>
+</html>
+```

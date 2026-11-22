@@ -1,0 +1,411 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farm Management - Login</title>
+
+<link rel="stylesheet" href="CSS/style.css">
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f1f8e9;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #1b5e20;
+    margin-top: 25px;
+}
+
+.auth-box {
+    background: white;
+    width: 400px;
+    max-width: 95%;
+    margin: 35px auto;
+    padding: 28px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+    text-align: center;
+}
+
+.auth-box h2 {
+    color: #2e7d32;
+    margin-bottom: 20px;
+}
+
+.role-buttons {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.role-btn {
+    flex: 1;
+    padding: 13px;
+    border: 2px solid #c8e6c9;
+    border-radius: 8px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.role-btn.active {
+    background: #2e7d32;
+    color: white;
+    border-color: #2e7d32;
+}
+
+.auth-box input {
+    width: 100%;
+    padding: 13px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-size: 15px;
+}
+
+.main-btn {
+    width: 100%;
+    padding: 13px;
+    margin-top: 15px;
+    background: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.main-btn:hover {
+    background: #1b5e20;
+}
+
+.main-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.switch {
+    color: #2e7d32;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#message {
+    margin-top: 15px;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.success {
+    color: #2e7d32;
+}
+
+.error {
+    color: #c62828;
+}
+
+.info {
+    color: #1565c0;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>🌾 Farm Management System</h1>
+
+<div class="auth-box">
+
+    <h2 id="title">Login</h2>
+
+    <p><b>Select your account type</b></p>
+
+    <div class="role-buttons">
+
+        <button type="button"
+                id="farmerBtn"
+                class="role-btn active"
+                onclick="selectRole('farmer')">
+            🌾 Farmer
+        </button>
+
+        <button type="button"
+                id="consumerBtn"
+                class="role-btn"
+                onclick="selectRole('consumer')">
+            🛒 Consumer
+        </button>
+
+    </div>
+
+    <input type="text"
+           id="name"
+           placeholder="Enter your full name"
+           hidden>
+
+    <input type="email"
+           id="email"
+           placeholder="Enter email address"
+           autocomplete="email">
+
+    <input type="password"
+           id="password"
+           placeholder="Enter password"
+           autocomplete="current-password">
+
+    <button class="main-btn"
+            id="submitBtn"
+            onclick="handleAuth()">
+        Login
+    </button>
+
+    <p id="message"></p>
+
+    <p id="switchText">
+        Don't have an account?
+        <span class="switch" onclick="toggleForm()">Register</span>
+    </p>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<script>
+
+let isRegister = false;
+let selectedRole = "farmer";
+
+function selectRole(role) {
+
+    selectedRole = role;
+
+    document.getElementById("farmerBtn").classList.toggle(
+        "active",
+        role === "farmer"
+    );
+
+    document.getElementById("consumerBtn").classList.toggle(
+        "active",
+        role === "consumer"
+    );
+
+    updateTitle();
+
+    document.getElementById("message").innerText = "";
+}
+
+function updateTitle() {
+
+    if (isRegister) {
+        document.getElementById("title").innerText =
+            selectedRole === "farmer"
+            ? "Farmer Registration"
+            : "Consumer Registration";
+    } else {
+        document.getElementById("title").innerText =
+            selectedRole === "farmer"
+            ? "Farmer Login"
+            : "Consumer Login";
+    }
+}
+
+function toggleForm() {
+
+    isRegister = !isRegister;
+
+    document.getElementById("name").hidden = !isRegister;
+
+    document.getElementById("password").autocomplete =
+        isRegister ? "new-password" : "current-password";
+
+    document.getElementById("submitBtn").innerText =
+        isRegister ? "Create Account" : "Login";
+
+    document.getElementById("switchText").innerHTML =
+        isRegister
+        ? 'Already have an account? <span class="switch" onclick="toggleForm()">Login</span>'
+        : 'Don\'t have an account? <span class="switch" onclick="toggleForm()">Register</span>';
+
+    updateTitle();
+
+    document.getElementById("message").innerText = "";
+}
+
+function showMessage(text, type = "error") {
+
+    const message = document.getElementById("message");
+
+    message.innerText = text;
+
+    message.className = type;
+}
+
+async function handleAuth() {
+
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    const button = document.getElementById("submitBtn");
+
+    if (!email || !password || (isRegister && !name)) {
+        showMessage("Please fill all required details.");
+        return;
+    }
+
+    if (isRegister && password.length < 6) {
+        showMessage("Password must contain at least 6 characters.");
+        return;
+    }
+
+    button.disabled = true;
+
+    showMessage("Please wait...", "info");
+
+    try {
+
+        // REGISTRATION
+        if (isRegister) {
+
+            const { data, error } =
+                await supabaseClient.auth.signUp({
+
+                    email: email,
+                    password: password,
+
+                    options: {
+                        data: {
+                            full_name: name,
+                            role: selectedRole
+                        }
+                    }
+
+                });
+
+            if (error) {
+                throw error;
+            }
+
+            showMessage(
+                "Account created successfully! A confirmation email has been sent to " +
+                email +
+                ". Please open your email and confirm your account before logging in.",
+                "success"
+            );
+
+            // Clear password after successful signup
+            document.getElementById("password").value = "";
+
+        }
+
+        // LOGIN
+        else {
+
+            const { data, error } =
+                await supabaseClient.auth.signInWithPassword({
+
+                    email: email,
+                    password: password
+
+                });
+
+            if (error) {
+                throw error;
+            }
+
+            const user = data.user;
+
+            // Get role from database
+            const { data: roleData, error: roleError } =
+                await supabaseClient
+                    .from("user_roles")
+                    .select("role")
+                    .eq("user_id", user.id)
+                    .maybeSingle();
+
+            if (roleError) {
+                throw new Error(
+                    "Role verification failed: " + roleError.message
+                );
+            }
+
+            // Use database role first, metadata role if missing
+            let actualRole =
+                roleData?.role ||
+                user.user_metadata?.role ||
+                "farmer";
+
+            // ADMIN LOGIN
+            if (actualRole === "admin") {
+
+                window.location.href = "admin.html";
+                return;
+            }
+
+            // FARMER LOGIN
+            if (actualRole === "farmer") {
+
+                if (selectedRole !== "farmer") {
+
+                    await supabaseClient.auth.signOut();
+
+                    throw new Error(
+                        "This account is a Farmer account. Please select Farmer."
+                    );
+                }
+
+                window.location.href = "p.html";
+                return;
+            }
+
+            // CONSUMER LOGIN
+            if (actualRole === "consumer") {
+
+                if (selectedRole !== "consumer") {
+
+                    await supabaseClient.auth.signOut();
+
+                    throw new Error(
+                        "This account is a Consumer account. Please select Consumer."
+                    );
+                }
+
+                window.location.href = "consumer.html";
+                return;
+            }
+
+            // UNKNOWN ROLE
+            await supabaseClient.auth.signOut();
+
+            throw new Error("Account role is not recognized.");
+
+        }
+
+    } catch (error) {
+
+        showMessage(error.message, "error");
+
+    }
+
+    button.disabled = false;
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,773 @@
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farmer Product Upload</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:#f2f7f2;color:#26352b}
+header{background:linear-gradient(135deg,#064e32,#2e8b57);color:white;padding:22px 35px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px}
+header h1{font-size:25px}
+header p{margin-top:5px}
+.header-buttons{display:flex;gap:10px;flex-wrap:wrap}
+.header-buttons button{border:none;padding:11px 18px;border-radius:7px;cursor:pointer;font-weight:bold}
+.back-btn{background:white;color:#14633b}
+.logout-btn{background:#e8f5e9;color:#14633b}
+.container{width:92%;max-width:1100px;margin:25px auto}
+.form-section{background:white;padding:25px;border-radius:12px;box-shadow:0 2px 10px #00000010}
+.form-section h2{color:#14633b;margin-bottom:20px}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.form-group{display:flex;flex-direction:column}
+.full-width{grid-column:1/-1}
+label{font-weight:bold;margin-bottom:7px}
+input,select,textarea{padding:12px;border:1px solid #ccc;border-radius:7px;font-size:15px;width:100%}
+textarea{min-height:100px;resize:vertical}
+.upload-btn{background:#198754;color:white;border:none;padding:14px;border-radius:7px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;width:100%}
+.upload-btn:hover{background:#116b40}
+.upload-btn:disabled{background:#888;cursor:not-allowed}
+#preview{display:none;width:180px;height:180px;object-fit:cover;margin-top:12px;border-radius:10px;border:1px solid #ddd}
+#message{margin-top:15px;font-weight:bold;overflow-wrap:anywhere}
+.products-section{margin-top:35px}
+.products-section h2{color:#14633b;margin-bottom:20px}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
+.product-card{background:white;border-radius:12px;overflow:hidden;box-shadow:0 3px 10px #00000012}
+.product-card img{width:100%;height:210px;object-fit:cover;background:#eee}
+.product-info{padding:18px}
+.product-info h3{color:#14633b;margin-bottom:10px;overflow-wrap:anywhere}
+.product-info p{margin:7px 0;color:#555;overflow-wrap:anywhere}
+.delete-btn{width:100%;padding:11px;background:#dc3545;color:white;border:none;border-radius:7px;margin-top:12px;cursor:pointer}
+.delete-btn:hover{background:#b02a37}
+.delete-btn:disabled{background:#888;cursor:not-allowed}
+.empty{color:#777;background:white;padding:20px;border-radius:10px}
+footer{text-align:center;padding:25px;color:#666;margin-top:30px}
+.language-box{display:flex;align-items:center;gap:8px}
+.language-box select{width:auto;min-width:130px}
+@media(max-width:650px){
+header{padding:20px}
+header h1{font-size:21px}
+.form-grid{grid-template-columns:1fr}
+.full-width{grid-column:auto}
+.container{width:95%}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <h1 id="heading">🌾 Farmer Product Upload</h1>
+        <p id="subtitle">Upload your products to the marketplace</p>
+    </div>
+
+    <div class="header-buttons">
+        <div class="language-box">
+            <select id="languageSelect" aria-label="Language">
+                <option value="en">English</option>
+                <option value="kn">ಕನ್ನಡ</option>
+                <option value="hi">हिंदी</option>
+                <option value="te">తెలుగు</option>
+                <option value="ta">தமிழ்</option>
+            </select>
+        </div>
+        <button class="back-btn" id="backButton">Dashboard</button>
+        <button class="logout-btn" id="logoutButton">Logout</button>
+    </div>
+</header>
+
+<div class="container">
+
+<section class="form-section">
+    <h2 id="formTitle">➕ Add New Product</h2>
+
+    <form id="productForm">
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label id="farmerNameLabel" for="farmerName">Farmer Name</label>
+                <input type="text" id="farmerName" placeholder="Enter your name" required>
+            </div>
+
+            <div class="form-group">
+                <label id="phoneLabel" for="farmerPhone">Mobile Number</label>
+                <input type="tel" id="farmerPhone" placeholder="Enter mobile number"
+                       pattern="[0-9]{10}" maxlength="10" minlength="10" required>
+            </div>
+
+            <div class="form-group">
+                <label id="productNameLabel" for="productName">Product Name</label>
+                <input type="text" id="productName" placeholder="Example: Tomato" required>
+            </div>
+
+            <div class="form-group">
+                <label id="categoryLabel" for="category">Category</label>
+                <select id="category" required>
+                    <option value="" id="categoryPlaceholder">Select Category</option>
+                    <option value="Fruits" id="optFruits">Fruits</option>
+                    <option value="Vegetables" id="optVegetables">Vegetables</option>
+                    <option value="Crops" id="optCrops">Crops</option>
+                    <option value="Livestock" id="optLivestock">Livestock</option>
+                    <option value="Land" id="optLand">Agricultural Land</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label id="priceLabel" for="price">Price (₹)</label>
+                <input type="number" id="price" min="0" step="0.01" placeholder="Enter price" required>
+            </div>
+
+            <div class="form-group">
+                <label id="quantityLabel" for="quantity">Available Quantity</label>
+                <input type="number" id="quantity" min="0" step="0.01" placeholder="Enter quantity" required>
+            </div>
+
+            <div class="form-group">
+                <label id="unitLabel" for="unit">Unit</label>
+                <select id="unit" required>
+                    <option value="" id="unitPlaceholder">Select Unit</option>
+                    <option value="kg" id="optKg">Kilogram (kg)</option>
+                    <option value="quintal" id="optQuintal">Quintal</option>
+                    <option value="piece" id="optPiece">Piece</option>
+                    <option value="litre" id="optLitre">Litre</option>
+                    <option value="acre" id="optAcre">Acre</option>
+                    <option value="animal" id="optAnimal">Animal</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label id="locationLabel" for="location">Location</label>
+                <input type="text" id="location" placeholder="Village / City" required>
+            </div>
+
+            <div class="form-group full-width">
+                <label id="descriptionLabel" for="description">Description</label>
+                <textarea id="description" placeholder="Enter product details..."></textarea>
+            </div>
+
+            <div class="form-group full-width">
+                <label id="photoLabel" for="productImage">Product Photo</label>
+                <input type="file" id="productImage" accept="image/*" required>
+                <img id="preview" alt="Product preview">
+            </div>
+        </div>
+
+        <button type="submit" class="upload-btn" id="uploadButton">Upload Product</button>
+        <div id="message"></div>
+    </form>
+</section>
+
+<section class="products-section">
+    <h2 id="myProductsTitle">📦 My Uploaded Products</h2>
+    <div class="products-grid" id="myProducts">
+        <p class="empty" id="loadingProducts">Loading products...</p>
+    </div>
+</section>
+
+</div>
+
+<footer id="footerText">Farm Management System</footer>
+
+<script>
+let currentUser = null;
+let currentLanguage = localStorage.getItem("agritec_dashboard_language") || "en";
+
+const translations = {
+en:{
+heading:"🌾 Farmer Product Upload",subtitle:"Upload your products to the marketplace",
+dashboard:"Dashboard",logout:"Logout",formTitle:"➕ Add New Product",
+farmerName:"Farmer Name",farmerNamePlaceholder:"Enter your name",
+phone:"Mobile Number",phonePlaceholder:"Enter mobile number",
+productName:"Product Name",productPlaceholder:"Example: Tomato",
+category:"Category",selectCategory:"Select Category",
+fruits:"Fruits",vegetables:"Vegetables",crops:"Crops",livestock:"Livestock",land:"Agricultural Land",
+price:"Price (₹)",pricePlaceholder:"Enter price",
+quantity:"Available Quantity",quantityPlaceholder:"Enter quantity",
+unit:"Unit",selectUnit:"Select Unit",kg:"Kilogram (kg)",quintal:"Quintal",
+piece:"Piece",litre:"Litre",acre:"Acre",animal:"Animal",
+location:"Location",locationPlaceholder:"Village / City",
+description:"Description",descriptionPlaceholder:"Enter product details...",
+photo:"Product Photo",upload:"Upload Product",uploading:"Uploading...",
+myProducts:"📦 My Uploaded Products",loading:"Loading products...",
+footer:"Farm Management System",preview:"Product preview",
+validPhone:"Enter a valid 10-digit mobile number.",
+selectPhoto:"Please select a product photo.",
+imageOnly:"Please select an image file.",
+invalidValues:"Price and quantity cannot be negative.",
+uploadSuccess:"Product uploaded successfully!",
+uploadFailed:"Upload failed: ",uploadError:"Product upload failed!",
+sessionExpired:"Login session expired.",login:"Please login first.",
+loadFailed:"Unable to load products: ",noProducts:"You have not uploaded any products yet.",
+farmer:"Farmer:",mobile:"Mobile:",categoryCard:"Category:",priceCard:"Price:",
+quantityCard:"Quantity:",locationCard:"Location:",descriptionCard:"Description:",
+status:"Status:",notProvided:"Not provided",noDescription:"No description",
+available:"Available",delete:"Delete Product",deleting:"Deleting...",
+confirmDelete:"Are you sure you want to delete this product?\n\nThe product and its uploaded photo will be deleted.",
+deleteSuccess:"Product and photo deleted successfully!",
+photoDeleteWarning:"Product deleted successfully.\n\nBut the photo could not be deleted from Storage.",
+deleteFailed:"Delete failed!",photoDeleteError:"Image deletion error:",
+logoutError:"Logout error: ",deletedNoPermission:"Product was not deleted. Check your permissions.",
+photoMissing:"Photo could not be deleted from Storage."
+},
+kn:{
+heading:"🌾 ರೈತ ಉತ್ಪನ್ನ ಅಪ್‌ಲೋಡ್",subtitle:"ನಿಮ್ಮ ಉತ್ಪನ್ನಗಳನ್ನು ಮಾರುಕಟ್ಟೆಗೆ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+dashboard:"ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",logout:"ಲಾಗ್‌ಔಟ್",formTitle:"➕ ಹೊಸ ಉತ್ಪನ್ನ ಸೇರಿಸಿ",
+farmerName:"ರೈತರ ಹೆಸರು",farmerNamePlaceholder:"ನಿಮ್ಮ ಹೆಸರನ್ನು ನಮೂದಿಸಿ",
+phone:"ಮೊಬೈಲ್ ಸಂಖ್ಯೆ",phonePlaceholder:"ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ",
+productName:"ಉತ್ಪನ್ನದ ಹೆಸರು",productPlaceholder:"ಉದಾಹರಣೆ: ಟೊಮೆಟೊ",
+category:"ವರ್ಗ",selectCategory:"ವರ್ಗ ಆಯ್ಕೆಮಾಡಿ",
+fruits:"ಹಣ್ಣುಗಳು",vegetables:"ತರಕಾರಿಗಳು",crops:"ಬೆಳೆಗಳು",livestock:"ಜಾನುವಾರುಗಳು",land:"ಕೃಷಿ ಭೂಮಿ",
+price:"ಬೆಲೆ (₹)",pricePlaceholder:"ಬೆಲೆ ನಮೂದಿಸಿ",
+quantity:"ಲಭ್ಯವಿರುವ ಪ್ರಮಾಣ",quantityPlaceholder:"ಪ್ರಮಾಣ ನಮೂದಿಸಿ",
+unit:"ಅಳತೆ",selectUnit:"ಅಳತೆ ಆಯ್ಕೆಮಾಡಿ",kg:"ಕಿಲೋಗ್ರಾಂ (kg)",quintal:"ಕ್ವಿಂಟಾಲ್",
+piece:"ತುಂಡು",litre:"ಲೀಟರ್",acre:"ಎಕರೆ",animal:"ಪ್ರಾಣಿ",
+location:"ಸ್ಥಳ",locationPlaceholder:"ಗ್ರಾಮ / ನಗರ",
+description:"ವಿವರಣೆ",descriptionPlaceholder:"ಉತ್ಪನ್ನದ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ...",
+photo:"ಉತ್ಪನ್ನದ ಫೋಟೋ",upload:"ಉತ್ಪನ್ನ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",uploading:"ಅಪ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+myProducts:"📦 ನಾನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿದ ಉತ್ಪನ್ನಗಳು",loading:"ಉತ್ಪನ್ನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+footer:"ಕೃಷಿ ನಿರ್ವಹಣಾ ವ್ಯವಸ್ಥೆ",preview:"ಉತ್ಪನ್ನದ ಪೂರ್ವವೀಕ್ಷಣೆ",
+validPhone:"ಸರಿಯಾದ 10 ಅಂಕಿಗಳ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.",
+selectPhoto:"ದಯವಿಟ್ಟು ಉತ್ಪನ್ನದ ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ.",
+imageOnly:"ದಯವಿಟ್ಟು ಚಿತ್ರ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ.",
+invalidValues:"ಬೆಲೆ ಮತ್ತು ಪ್ರಮಾಣ ಋಣಾತ್ಮಕವಾಗಿರಬಾರದು.",
+uploadSuccess:"ಉತ್ಪನ್ನ ಯಶಸ್ವಿಯಾಗಿ ಅಪ್‌ಲೋಡ್ ಆಗಿದೆ!",
+uploadFailed:"ಅಪ್‌ಲೋಡ್ ವಿಫಲವಾಗಿದೆ: ",uploadError:"ಉತ್ಪನ್ನ ಅಪ್‌ಲೋಡ್ ವಿಫಲವಾಗಿದೆ!",
+sessionExpired:"ಲಾಗಿನ್ ಅವಧಿ ಮುಗಿದಿದೆ.",login:"ದಯವಿಟ್ಟು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ.",
+loadFailed:"ಉತ್ಪನ್ನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: ",noProducts:"ನೀವು ಇನ್ನೂ ಯಾವುದೇ ಉತ್ಪನ್ನಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿಲ್ಲ.",
+farmer:"ರೈತ:",mobile:"ಮೊಬೈಲ್:",categoryCard:"ವರ್ಗ:",priceCard:"ಬೆಲೆ:",
+quantityCard:"ಪ್ರಮಾಣ:",locationCard:"ಸ್ಥಳ:",descriptionCard:"ವಿವರಣೆ:",
+status:"ಸ್ಥಿತಿ:",notProvided:"ನೀಡಲಾಗಿಲ್ಲ",noDescription:"ವಿವರಣೆ ಇಲ್ಲ",
+available:"ಲಭ್ಯವಿದೆ",delete:"ಉತ್ಪನ್ನ ಅಳಿಸಿ",deleting:"ಅಳಿಸಲಾಗುತ್ತಿದೆ...",
+confirmDelete:"ಈ ಉತ್ಪನ್ನವನ್ನು ಅಳಿಸಲು ಖಚಿತವೇ?\n\nಉತ್ಪನ್ನ ಮತ್ತು ಅದರ ಫೋಟೋ ಅಳಿಸಲಾಗುತ್ತದೆ.",
+deleteSuccess:"ಉತ್ಪನ್ನ ಮತ್ತು ಫೋಟೋ ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ!",
+photoDeleteWarning:"ಉತ್ಪನ್ನ ಅಳಿಸಲಾಗಿದೆ.\n\nಆದರೆ Storage ನಿಂದ ಫೋಟೋ ಅಳಿಸಲಾಗಲಿಲ್ಲ.",
+deleteFailed:"ಅಳಿಸುವಿಕೆ ವಿಫಲವಾಗಿದೆ!",photoDeleteError:"ಫೋಟೋ ಅಳಿಸುವ ದೋಷ:",
+logoutError:"ಲಾಗ್‌ಔಟ್ ದೋಷ: ",deletedNoPermission:"ಉತ್ಪನ್ನ ಅಳಿಸಲಾಗಲಿಲ್ಲ. ಅನುಮತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
+photoMissing:"Storage ನಿಂದ ಫೋಟೋ ಅಳಿಸಲಾಗಲಿಲ್ಲ."
+},
+hi:{
+heading:"🌾 किसान उत्पाद अपलोड",subtitle:"अपने उत्पाद बाज़ार में अपलोड करें",
+dashboard:"डैशबोर्ड",logout:"लॉगआउट",formTitle:"➕ नया उत्पाद जोड़ें",
+farmerName:"किसान का नाम",farmerNamePlaceholder:"अपना नाम दर्ज करें",
+phone:"मोबाइल नंबर",phonePlaceholder:"मोबाइल नंबर दर्ज करें",
+productName:"उत्पाद का नाम",productPlaceholder:"उदाहरण: टमाटर",
+category:"श्रेणी",selectCategory:"श्रेणी चुनें",
+fruits:"फल",vegetables:"सब्जियाँ",crops:"फसलें",livestock:"पशुधन",land:"कृषि भूमि",
+price:"कीमत (₹)",pricePlaceholder:"कीमत दर्ज करें",
+quantity:"उपलब्ध मात्रा",quantityPlaceholder:"मात्रा दर्ज करें",
+unit:"इकाई",selectUnit:"इकाई चुनें",kg:"किलोग्राम (kg)",quintal:"क्विंटल",
+piece:"पीस",litre:"लीटर",acre:"एकड़",animal:"पशु",
+location:"स्थान",locationPlaceholder:"गाँव / शहर",
+description:"विवरण",descriptionPlaceholder:"उत्पाद का विवरण दर्ज करें...",
+photo:"उत्पाद की फोटो",upload:"उत्पाद अपलोड करें",uploading:"अपलोड हो रहा है...",
+myProducts:"📦 मेरे अपलोड किए गए उत्पाद",loading:"उत्पाद लोड हो रहे हैं...",
+footer:"कृषि प्रबंधन प्रणाली",preview:"उत्पाद पूर्वावलोकन",
+validPhone:"10 अंकों का सही मोबाइल नंबर दर्ज करें.",
+selectPhoto:"कृपया उत्पाद की फोटो चुनें.",
+imageOnly:"कृपया एक छवि फ़ाइल चुनें.",
+invalidValues:"कीमत और मात्रा ऋणात्मक नहीं हो सकती.",
+uploadSuccess:"उत्पाद सफलतापूर्वक अपलोड हुआ!",
+uploadFailed:"अपलोड विफल: ",uploadError:"उत्पाद अपलोड विफल!",
+sessionExpired:"लॉगिन सत्र समाप्त हो गया.",login:"कृपया पहले लॉगिन करें.",
+loadFailed:"उत्पाद लोड नहीं हो सके: ",noProducts:"आपने अभी तक कोई उत्पाद अपलोड नहीं किया है.",
+farmer:"किसान:",mobile:"मोबाइल:",categoryCard:"श्रेणी:",priceCard:"कीमत:",
+quantityCard:"मात्रा:",locationCard:"स्थान:",descriptionCard:"विवरण:",
+status:"स्थिति:",notProvided:"उपलब्ध नहीं",noDescription:"कोई विवरण नहीं",
+available:"उपलब्ध",delete:"उत्पाद हटाएं",deleting:"हटाया जा रहा है...",
+confirmDelete:"क्या आप इस उत्पाद को हटाना चाहते हैं?\n\nउत्पाद और फोटो दोनों हटाए जाएंगे.",
+deleteSuccess:"उत्पाद और फोटो सफलतापूर्वक हटाए गए!",
+photoDeleteWarning:"उत्पाद हटा दिया गया.\n\nलेकिन Storage से फोटो नहीं हटाई जा सकी.",
+deleteFailed:"हटाना विफल!",photoDeleteError:"फोटो हटाने में त्रुटि:",
+logoutError:"लॉगआउट त्रुटि: ",deletedNoPermission:"उत्पाद नहीं हटाया गया. अनुमति जांचें.",
+photoMissing:"Storage से फोटो नहीं हटाई जा सकी."
+},
+te:{
+heading:"🌾 రైతు ఉత్పత్తుల అప్‌లోడ్",subtitle:"మీ ఉత్పత్తులను మార్కెట్‌లో అప్‌లోడ్ చేయండి",
+dashboard:"డాష్‌బోర్డ్",logout:"లాగ్‌అవుట్",formTitle:"➕ కొత్త ఉత్పత్తిని జోడించండి",
+farmerName:"రైతు పేరు",farmerNamePlaceholder:"మీ పేరు నమోదు చేయండి",
+phone:"మొబైల్ నంబర్",phonePlaceholder:"మొబైల్ నంబర్ నమోదు చేయండి",
+productName:"ఉత్పత్తి పేరు",productPlaceholder:"ఉదాహరణ: టమాటా",
+category:"వర్గం",selectCategory:"వర్గాన్ని ఎంచుకోండి",
+fruits:"పండ్లు",vegetables:"కూరగాయలు",crops:"పంటలు",livestock:"పశువులు",land:"వ్యవసాయ భూమి",
+price:"ధర (₹)",pricePlaceholder:"ధర నమోదు చేయండి",
+quantity:"అందుబాటులో ఉన్న పరిమాణం",quantityPlaceholder:"పరిమాణం నమోదు చేయండి",
+unit:"యూనిట్",selectUnit:"యూనిట్ ఎంచుకోండి",kg:"కిలోగ్రాము (kg)",quintal:"క్వింటాల్",
+piece:"ముక్క",litre:"లీటర్",acre:"ఎకరం",animal:"జంతువు",
+location:"ప్రదేశం",locationPlaceholder:"గ్రామం / నగరం",
+description:"వివరణ",descriptionPlaceholder:"ఉత్పత్తి వివరాలను నమోదు చేయండి...",
+photo:"ఉత్పత్తి ఫోటో",upload:"ఉత్పత్తిని అప్‌లోడ్ చేయండి",uploading:"అప్‌లోడ్ అవుతోంది...",
+myProducts:"📦 నేను అప్‌లోడ్ చేసిన ఉత్పత్తులు",loading:"ఉత్పత్తులు లోడ్ అవుతున్నాయి...",
+footer:"వ్యవసాయ నిర్వహణ వ్యవస్థ",preview:"ఉత్పత్తి ప్రివ్యూ",
+validPhone:"సరైన 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి.",
+selectPhoto:"దయచేసి ఉత్పత్తి ఫోటోను ఎంచుకోండి.",
+imageOnly:"దయచేసి ఇమేజ్ ఫైల్‌ను ఎంచుకోండి.",
+invalidValues:"ధర మరియు పరిమాణం ప్రతికూలంగా ఉండకూడదు.",
+uploadSuccess:"ఉత్పత్తి విజయవంతంగా అప్‌లోడ్ అయింది!",
+uploadFailed:"అప్‌లోడ్ విఫలమైంది: ",uploadError:"ఉత్పత్తి అప్‌లోడ్ విఫలమైంది!",
+sessionExpired:"లాగిన్ సెషన్ ముగిసింది.",login:"దయచేసి ముందుగా లాగిన్ అవ్వండి.",
+loadFailed:"ఉత్పత్తులను లోడ్ చేయలేకపోయాము: ",noProducts:"మీరు ఇంకా ఉత్పత్తులను అప్‌లోడ్ చేయలేదు.",
+farmer:"రైతు:",mobile:"మొబైల్:",categoryCard:"వర్గం:",priceCard:"ధర:",
+quantityCard:"పరిమాణం:",locationCard:"ప్రదేశం:",descriptionCard:"వివరణ:",
+status:"స్థితి:",notProvided:"ఇవ్వలేదు",noDescription:"వివరణ లేదు",
+available:"అందుబాటులో ఉంది",delete:"ఉత్పత్తిని తొలగించండి",deleting:"తొలగిస్తోంది...",
+confirmDelete:"ఈ ఉత్పత్తిని తొలగించాలనుకుంటున్నారా?\n\nఉత్పత్తి మరియు ఫోటో తొలగించబడతాయి.",
+deleteSuccess:"ఉత్పత్తి మరియు ఫోటో విజయవంతంగా తొలగించబడ్డాయి!",
+photoDeleteWarning:"ఉత్పత్తి తొలగించబడింది.\n\nకానీ Storage నుండి ఫోటో తొలగించలేకపోయాము.",
+deleteFailed:"తొలగింపు విఫలమైంది!",photoDeleteError:"ఫోటో తొలగించడంలో లోపం:",
+logoutError:"లాగ్‌అవుట్ లోపం: ",deletedNoPermission:"ఉత్పత్తి తొలగించబడలేదు. అనుమతులను తనిఖీ చేయండి.",
+photoMissing:"Storage నుండి ఫోటో తొలగించలేకపోయాము."
+},
+ta:{
+heading:"🌾 விவசாயி தயாரிப்பு பதிவேற்றம்",subtitle:"உங்கள் தயாரிப்புகளை சந்தையில் பதிவேற்றவும்",
+dashboard:"டாஷ்போர்டு",logout:"வெளியேறு",formTitle:"➕ புதிய தயாரிப்பைச் சேர்க்கவும்",
+farmerName:"விவசாயியின் பெயர்",farmerNamePlaceholder:"உங்கள் பெயரை உள்ளிடவும்",
+phone:"மொபைல் எண்",phonePlaceholder:"மொபைல் எண்ணை உள்ளிடவும்",
+productName:"தயாரிப்பு பெயர்",productPlaceholder:"உதாரணம்: தக்காளி",
+category:"வகை",selectCategory:"வகையைத் தேர்ந்தெடுக்கவும்",
+fruits:"பழங்கள்",vegetables:"காய்கறிகள்",crops:"பயிர்கள்",livestock:"கால்நடைகள்",land:"விவசாய நிலம்",
+price:"விலை (₹)",pricePlaceholder:"விலையை உள்ளிடவும்",
+quantity:"கிடைக்கும் அளவு",quantityPlaceholder:"அளவை உள்ளிடவும்",
+unit:"அலகு",selectUnit:"அலகைத் தேர்ந்தெடுக்கவும்",kg:"கிலோகிராம் (kg)",quintal:"குவிண்டால்",
+piece:"துண்டு",litre:"லிட்டர்",acre:"ஏக்கர்",animal:"விலங்கு",
+location:"இடம்",locationPlaceholder:"கிராமம் / நகரம்",
+description:"விளக்கம்",descriptionPlaceholder:"தயாரிப்பு விவரங்களை உள்ளிடவும்...",
+photo:"தயாரிப்பு புகைப்படம்",upload:"தயாரிப்பைப் பதிவேற்றவும்",uploading:"பதிவேற்றப்படுகிறது...",
+myProducts:"📦 நான் பதிவேற்றிய தயாரிப்புகள்",loading:"தயாரிப்புகள் ஏற்றப்படுகின்றன...",
+footer:"விவசாய மேலாண்மை அமைப்பு",preview:"தயாரிப்பு முன்னோட்டம்",
+validPhone:"சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்.",
+selectPhoto:"தயவுசெய்து தயாரிப்பு புகைப்படத்தைத் தேர்ந்தெடுக்கவும்.",
+imageOnly:"படக் கோப்பைத் தேர்ந்தெடுக்கவும்.",
+invalidValues:"விலை மற்றும் அளவு எதிர்மறையாக இருக்கக்கூடாது.",
+uploadSuccess:"தயாரிப்பு வெற்றிகரமாக பதிவேற்றப்பட்டது!",
+uploadFailed:"பதிவேற்றம் தோல்வி: ",uploadError:"தயாரிப்பு பதிவேற்றம் தோல்வியடைந்தது!",
+sessionExpired:"உள்நுழைவு அமர்வு முடிந்தது.",login:"முதலில் உள்நுழையவும்.",
+loadFailed:"தயாரிப்புகளை ஏற்ற முடியவில்லை: ",noProducts:"நீங்கள் இன்னும் தயாரிப்புகளை பதிவேற்றவில்லை.",
+farmer:"விவசாயி:",mobile:"மொபைல்:",categoryCard:"வகை:",priceCard:"விலை:",
+quantityCard:"அளவு:",locationCard:"இடம்:",descriptionCard:"விளக்கம்:",
+status:"நிலை:",notProvided:"வழங்கப்படவில்லை",noDescription:"விளக்கம் இல்லை",
+available:"கிடைக்கிறது",delete:"தயாரிப்பை நீக்கவும்",deleting:"நீக்கப்படுகிறது...",
+confirmDelete:"இந்த தயாரிப்பை நீக்க விரும்புகிறீர்களா?\n\nதயாரிப்பு மற்றும் புகைப்படம் நீக்கப்படும்.",
+deleteSuccess:"தயாரிப்பு மற்றும் புகைப்படம் வெற்றிகரமாக நீக்கப்பட்டன!",
+photoDeleteWarning:"தயாரிப்பு நீக்கப்பட்டது.\n\nஆனால் Storage-இல் இருந்து புகைப்படத்தை நீக்க முடியவில்லை.",
+deleteFailed:"நீக்குதல் தோல்வியடைந்தது!",photoDeleteError:"புகைப்படம் நீக்குவதில் பிழை:",
+logoutError:"வெளியேறுவதில் பிழை: ",deletedNoPermission:"தயாரிப்பு நீக்கப்படவில்லை. அனுமதிகளை சரிபார்க்கவும்.",
+photoMissing:"Storage-இல் இருந்து புகைப்படத்தை நீக்க முடியவில்லை."
+}
+};
+
+function t(key){
+return translations[currentLanguage]?.[key] ?? translations.en[key] ?? key;
+}
+
+function setText(id,key){
+const element=document.getElementById(id);
+if(element)element.textContent=t(key);
+}
+
+function setPlaceholder(id,key){
+document.getElementById(id).placeholder=t(key);
+}
+
+function applyLanguage(){
+const x=currentLanguage;
+
+document.getElementById("languageSelect").value=x;
+
+setText("heading","heading");
+setText("subtitle","subtitle");
+setText("backButton","dashboard");
+setText("logoutButton","logout");
+setText("formTitle","formTitle");
+
+setText("farmerNameLabel","farmerName");
+setPlaceholder("farmerName","farmerNamePlaceholder");
+setText("phoneLabel","phone");
+setPlaceholder("farmerPhone","phonePlaceholder");
+setText("productNameLabel","productName");
+setPlaceholder("productName","productPlaceholder");
+
+setText("categoryLabel","category");
+setText("categoryPlaceholder","selectCategory");
+setText("optFruits","fruits");
+setText("optVegetables","vegetables");
+setText("optCrops","crops");
+setText("optLivestock","livestock");
+setText("optLand","land");
+
+setText("priceLabel","price");
+setPlaceholder("price","pricePlaceholder");
+setText("quantityLabel","quantity");
+setPlaceholder("quantity","quantityPlaceholder");
+
+setText("unitLabel","unit");
+setText("unitPlaceholder","selectUnit");
+setText("optKg","kg");
+setText("optQuintal","quintal");
+setText("optPiece","piece");
+setText("optLitre","litre");
+setText("optAcre","acre");
+setText("optAnimal","animal");
+
+setText("locationLabel","location");
+setPlaceholder("location","locationPlaceholder");
+setText("descriptionLabel","description");
+setPlaceholder("description","descriptionPlaceholder");
+setText("photoLabel","photo");
+document.getElementById("preview").alt=t("preview");
+
+setText("uploadButton","upload");
+setText("myProductsTitle","myProducts");
+setText("footerText","footer");
+
+loadMyProducts();
+}
+
+document.getElementById("languageSelect").addEventListener("change",function(){
+currentLanguage=this.value;
+localStorage.setItem("agritec_dashboard_language",currentLanguage);
+applyLanguage();
+});
+
+function escapeHTML(value){
+return String(value??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+/* LOGIN */
+
+async function checkLogin(){
+const {data,error}=await supabaseClient.auth.getUser();
+
+if(error||!data.user){
+alert(t("login"));
+window.location.href="login.html";
+return false;
+}
+
+currentUser=data.user;
+return true;
+}
+
+/* IMAGE PREVIEW */
+
+document.getElementById("productImage").addEventListener("change",function(){
+const file=this.files[0];
+const preview=document.getElementById("preview");
+
+if(!file){
+preview.style.display="none";
+preview.src="";
+return;
+}
+
+if(!file.type.startsWith("image/")){
+alert(t("imageOnly"));
+this.value="";
+preview.style.display="none";
+preview.src="";
+return;
+}
+
+preview.src=URL.createObjectURL(file);
+preview.style.display="block";
+});
+
+/* UPLOAD */
+
+document.getElementById("productForm").addEventListener("submit",async function(event){
+event.preventDefault();
+
+if(!currentUser){
+alert(t("sessionExpired"));
+window.location.href="login.html";
+return;
+}
+
+const farmerName=document.getElementById("farmerName").value.trim();
+const farmerPhone=document.getElementById("farmerPhone").value.trim();
+const name=document.getElementById("productName").value.trim();
+const category=document.getElementById("category").value;
+const price=Number(document.getElementById("price").value);
+const quantity=Number(document.getElementById("quantity").value);
+const unit=document.getElementById("unit").value;
+const location=document.getElementById("location").value.trim();
+const description=document.getElementById("description").value.trim();
+const imageFile=document.getElementById("productImage").files[0];
+
+const message=document.getElementById("message");
+const uploadButton=document.getElementById("uploadButton");
+
+if(!/^[0-9]{10}$/.test(farmerPhone)){
+message.style.color="red";
+message.textContent=t("validPhone");
+return;
+}
+
+if(!imageFile){
+message.style.color="red";
+message.textContent=t("selectPhoto");
+return;
+}
+
+if(price<0||quantity<0){
+message.style.color="red";
+message.textContent=t("invalidValues");
+return;
+}
+
+uploadButton.disabled=true;
+uploadButton.textContent=t("uploading");
+message.textContent="";
+
+let uploadedFilePath=null;
+
+try{
+const safeFileName=imageFile.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+const filePath=currentUser.id+"/"+Date.now()+"_"+safeFileName;
+uploadedFilePath=filePath;
+
+const {error:uploadError}=await supabaseClient.storage
+.from("product-images")
+.upload(filePath,imageFile);
+
+if(uploadError)throw uploadError;
+
+const {data:imageData}=supabaseClient.storage
+.from("product-images")
+.getPublicUrl(filePath);
+
+const imageURL=imageData.publicUrl;
+
+const productData={
+farmer_id:currentUser.id,
+farmer_name:farmerName,
+farmer_phone:farmerPhone,
+product_name:name,
+category:category,
+description:description,
+price:price,
+quantity:quantity,
+unit:unit,
+location:location,
+image_url:imageURL,
+status:"Available"
+};
+
+const {error:databaseError}=await supabaseClient
+.from("farmer_products")
+.insert([productData]);
+
+if(databaseError)throw databaseError;
+
+alert(t("uploadSuccess"));
+
+document.getElementById("productForm").reset();
+
+const preview=document.getElementById("preview");
+preview.style.display="none";
+preview.src="";
+
+message.style.color="green";
+message.textContent=t("uploadSuccess");
+
+await loadMyProducts();
+
+}catch(error){
+console.error("Upload error:",error);
+
+if(uploadedFilePath){
+await supabaseClient.storage.from("product-images").remove([uploadedFilePath]);
+}
+
+message.style.color="red";
+message.textContent=t("uploadFailed")+error.message;
+
+alert(t("uploadError")+"\n\n"+error.message);
+
+}finally{
+uploadButton.disabled=false;
+uploadButton.textContent=t("upload");
+}
+});
+
+/* LOAD PRODUCTS */
+
+async function loadMyProducts(){
+const container=document.getElementById("myProducts");
+
+container.innerHTML="<p class='empty'>"+escapeHTML(t("loading"))+"</p>";
+
+if(!currentUser)return;
+
+const {data,error}=await supabaseClient
+.from("farmer_products")
+.select("*")
+.eq("farmer_id",currentUser.id)
+.order("created_at",{ascending:false});
+
+if(error){
+console.error(error);
+container.innerHTML="<p class='empty'>"+escapeHTML(t("loadFailed"))+
+escapeHTML(error.message)+"</p>";
+return;
+}
+
+if(!data||data.length===0){
+container.innerHTML="<p class='empty'>"+escapeHTML(t("noProducts"))+"</p>";
+return;
+}
+
+container.innerHTML="";
+
+data.forEach(product=>{
+const card=document.createElement("div");
+card.className="product-card";
+
+card.innerHTML=`
+<img src="${escapeHTML(product.image_url||"")}"
+alt="${escapeHTML(product.product_name)}">
+
+<div class="product-info">
+<h3>${escapeHTML(product.product_name)}</h3>
+
+<p><b>${escapeHTML(t("farmer"))}</b>
+${escapeHTML(product.farmer_name||t("notProvided"))}</p>
+
+<p><b>${escapeHTML(t("mobile"))}</b>
+${escapeHTML(product.farmer_phone||t("notProvided"))}</p>
+
+<p><b>${escapeHTML(t("categoryCard"))}</b>
+${escapeHTML(product.category)}</p>
+
+<p><b>${escapeHTML(t("priceCard"))}</b> ₹${escapeHTML(product.price)}</p>
+
+<p><b>${escapeHTML(t("quantityCard"))}</b>
+${escapeHTML(product.quantity)} ${escapeHTML(product.unit)}</p>
+
+<p><b>${escapeHTML(t("locationCard"))}</b>
+${escapeHTML(product.location)}</p>
+
+<p><b>${escapeHTML(t("descriptionCard"))}</b>
+${escapeHTML(product.description||t("noDescription"))}</p>
+
+<p><b>${escapeHTML(t("status"))}</b>
+${escapeHTML(product.status||t("available"))}</p>
+
+<button class="delete-btn">${escapeHTML(t("delete"))}</button>
+</div>
+`;
+
+const deleteButton=card.querySelector(".delete-btn");
+
+deleteButton.addEventListener("click",function(){
+deleteProduct(product.id,product.image_url,deleteButton);
+});
+
+container.appendChild(card);
+});
+}
+
+/* DELETE PRODUCT + IMAGE */
+
+async function deleteProduct(productID,imageURL,button){
+if(!confirm(t("confirmDelete")))return;
+
+button.disabled=true;
+button.textContent=t("deleting");
+
+try{
+const {data,error}=await supabaseClient
+.from("farmer_products")
+.delete()
+.eq("id",productID)
+.eq("farmer_id",currentUser.id)
+.select();
+
+if(error)throw error;
+
+if(!data||data.length===0){
+throw new Error(t("deletedNoPermission"));
+}
+
+let imageDeleted=true;
+
+if(imageURL){
+const marker="/product-images/";
+const position=imageURL.indexOf(marker);
+
+if(position!==-1){
+const filePath=imageURL.substring(position+marker.length);
+
+const {error:imageError}=await supabaseClient.storage
+.from("product-images")
+.remove([filePath]);
+
+if(imageError){
+console.error(t("photoDeleteError"),imageError);
+imageDeleted=false;
+}
+}else{
+imageDeleted=false;
+}
+}
+
+if(imageDeleted){
+alert(t("deleteSuccess"));
+}else{
+alert(t("photoDeleteWarning"));
+}
+
+await loadMyProducts();
+
+}catch(error){
+console.error("Delete error:",error);
+alert(t("deleteFailed")+"\n\n"+error.message);
+button.disabled=false;
+button.textContent=t("delete");
+}
+}
+
+/* DASHBOARD */
+
+document.getElementById("backButton").addEventListener("click",function(){
+window.location.href="p.html";
+});
+
+/* LOGOUT */
+
+document.getElementById("logoutButton").addEventListener("click",async function(){
+const {error}=await supabaseClient.auth.signOut();
+
+if(error){
+alert(t("logoutError")+error.message);
+return;
+}
+
+window.location.href="login.html";
+});
+
+/* INIT */
+
+async function initializePage(){
+applyLanguage();
+
+const loggedIn=await checkLogin();
+if(!loggedIn)return;
+
+await loadMyProducts();
+}
+
+initializePage();
+</script>
+
+</body>
+</html>

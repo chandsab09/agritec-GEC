@@ -1,0 +1,427 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incoming Requests</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
+body{background:#f3f7f3;color:#26352b}
+.header{background:linear-gradient(135deg,#064e32,#2e8b57);color:white;padding:25px}
+.header h1{margin-bottom:8px}
+.header p{opacity:.9}
+.container{max-width:1200px;margin:auto;padding:25px}
+.top-buttons{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:25px}
+button{border:none;padding:11px 17px;border-radius:8px;cursor:pointer;font-weight:bold}
+.dashboard-btn{background:#064e32;color:white}
+.refresh-btn{background:#e1eee5;color:#064e32}
+.language-select{padding:10px;border-radius:7px;border:1px solid #ccc}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px;margin-bottom:25px}
+.summary-card{background:white;padding:22px;border-radius:12px;box-shadow:0 3px 12px #0000000d}
+.summary-card h3{color:#657568;font-size:14px;margin-bottom:12px}
+.summary-card p{font-size:28px;font-weight:bold;color:#176b3b}
+.filter{background:white;padding:15px;border-radius:10px;margin-bottom:20px}
+.filter select{padding:10px;width:100%;max-width:250px;border-radius:7px;border:1px solid #ccc}
+.requests{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px}
+.request-card{background:white;padding:22px;border-radius:13px;box-shadow:0 3px 12px #0000000d;border-left:5px solid #2e8b57}
+.request-card h2{color:#176b3b;margin-bottom:15px;font-size:21px}
+.info{margin:10px 0;font-size:15px;overflow-wrap:anywhere}
+.consumer-details{background:#eaf5ed;border:1px solid #c8e5d0;padding:14px;border-radius:9px;margin-bottom:15px}
+.consumer-details h3{color:#176b3b;font-size:16px;margin-bottom:10px}
+.status{display:inline-block;padding:7px 12px;border-radius:20px;font-size:13px;font-weight:bold;margin:12px 0}
+.pending{background:#fff2cc;color:#946200}
+.accepted{background:#d8f3dc;color:#176b3b}
+.rejected{background:#ffe0e0;color:#a52828}
+.actions{display:flex;gap:10px;margin-top:18px}
+.accept-btn{background:#198754;color:white;flex:1}
+.reject-btn{background:#dc3545;color:white;flex:1}
+.accept-btn:disabled,.reject-btn:disabled{background:#aaa;cursor:not-allowed}
+.message{background:#f1f7f2;padding:12px;border-radius:8px;margin-top:12px;overflow-wrap:anywhere}
+#loading,#empty,#error{text-align:center;padding:35px;background:white;border-radius:12px;margin-top:20px}
+#error{color:#b42318;display:none}
+#empty{display:none}
+@media(max-width:600px){.container{padding:15px}.header{padding:20px}}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <h1>📦 <span data-i18n="title">Incoming Order Requests</span></h1>
+    <p data-i18n="subtitle">Manage consumer requests for your products</p>
+</div>
+
+<div class="container">
+
+    <div class="top-buttons">
+        <button class="dashboard-btn" onclick="location.href='p.html'">
+            ← <span data-i18n="dashboard">Dashboard</span>
+        </button>
+
+        <button class="refresh-btn" onclick="loadRequests()">
+            🔄 <span data-i18n="refresh">Refresh</span>
+        </button>
+
+        <select class="language-select" id="languageSelect">
+            <option value="en">English</option>
+            <option value="kn">ಕನ್ನಡ</option>
+            <option value="hi">हिन्दी</option>
+            <option value="te">తెలుగు</option>
+            <option value="ta">தமிழ்</option>
+        </select>
+    </div>
+
+    <div class="summary">
+        <div class="summary-card">
+            <h3 data-i18n="total">Total Requests</h3>
+            <p id="totalCount">0</p>
+        </div>
+        <div class="summary-card">
+            <h3 data-i18n="pending">Pending</h3>
+            <p id="pendingCount">0</p>
+        </div>
+        <div class="summary-card">
+            <h3 data-i18n="accepted">Accepted</h3>
+            <p id="acceptedCount">0</p>
+        </div>
+        <div class="summary-card">
+            <h3 data-i18n="rejected">Rejected</h3>
+            <p id="rejectedCount">0</p>
+        </div>
+    </div>
+
+    <div class="filter">
+        <select id="statusFilter" onchange="displayRequests()">
+            <option value="All" data-i18n="allRequests">All Requests</option>
+            <option value="Pending" data-i18n="pending">Pending</option>
+            <option value="Accepted" data-i18n="accepted">Accepted</option>
+            <option value="Rejected" data-i18n="rejected">Rejected</option>
+        </select>
+    </div>
+
+    <div id="loading" data-i18n="loading">Loading requests...</div>
+    <div id="error"></div>
+    <div id="empty" data-i18n="empty">No order requests found.</div>
+    <div class="requests" id="requestsContainer"></div>
+
+</div>
+
+<script>
+let currentUser = null;
+let allRequests = [];
+
+const translations = {
+en:{
+ title:"Incoming Order Requests",subtitle:"Manage consumer requests for your products",
+ dashboard:"Dashboard",refresh:"Refresh",total:"Total Requests",
+ pending:"Pending",accepted:"Accepted",rejected:"Rejected",
+ allRequests:"All Requests",loading:"Loading requests...",
+ empty:"No order requests found.",consumer:"Consumer Details",
+ name:"Name",phone:"Phone Number",notProvided:"Not provided",
+ requestId:"Request ID",category:"Category",na:"N/A",
+ quantity:"Quantity Requested",date:"Date",unknown:"Unknown",
+ message:"Message",noMessage:"No message",accept:"Accept",reject:"Reject",
+ confirmAccept:"Accept this request? Product stock will automatically decrease.",
+ confirmReject:"Are you sure you want to reject this request?",
+ acceptSuccess:"Order accepted! Product stock updated successfully.",
+ rejectSuccess:"Request rejected.",error:"Error: ",rejectError:"Error rejecting request: ",
+ product:"Product",pleaseLogin:"Please login first.",
+ filterEmpty:"No requests in this category.",
+ acceptedOther:"Order accepted successfully",dashboard:"Dashboard",
+},
+kn:{
+ title:"ಬಂದ ಆರ್ಡರ್ ವಿನಂತಿಗಳು",subtitle:"ನಿಮ್ಮ ಉತ್ಪನ್ನಗಳ ಗ್ರಾಹಕರ ವಿನಂತಿಗಳನ್ನು ನಿರ್ವಹಿಸಿ",
+ dashboard:"ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",refresh:"ರಿಫ್ರೆಶ್",total:"ಒಟ್ಟು ವಿನಂತಿಗಳು",
+ pending:"ಬಾಕಿ",accepted:"ಸ್ವೀಕರಿಸಲಾಗಿದೆ",rejected:"ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",
+ allRequests:"ಎಲ್ಲಾ ವಿನಂತಿಗಳು",loading:"ವಿನಂತಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+ empty:"ಯಾವುದೇ ಆರ್ಡರ್ ವಿನಂತಿಗಳು ಇಲ್ಲ.",consumer:"ಗ್ರಾಹಕರ ವಿವರಗಳು",
+ name:"ಹೆಸರು",phone:"ಫೋನ್ ಸಂಖ್ಯೆ",notProvided:"ನೀಡಿಲ್ಲ",
+ requestId:"ವಿನಂತಿ ID",category:"ವರ್ಗ",na:"ಲಭ್ಯವಿಲ್ಲ",
+ quantity:"ಕೋರಿದ ಪ್ರಮಾಣ",date:"ದಿನಾಂಕ",unknown:"ತಿಳಿದಿಲ್ಲ",
+ message:"ಸಂದೇಶ",noMessage:"ಸಂದೇಶವಿಲ್ಲ",accept:"ಸ್ವೀಕರಿಸಿ",reject:"ತಿರಸ್ಕರಿಸಿ",
+ confirmAccept:"ಈ ವಿನಂತಿಯನ್ನು ಸ್ವೀಕರಿಸಬೇಕೇ? ಉತ್ಪನ್ನದ ಸ್ಟಾಕ್ ಕಡಿಮೆಯಾಗುತ್ತದೆ.",
+ confirmReject:"ಈ ವಿನಂತಿಯನ್ನು ತಿರಸ್ಕರಿಸಲು ಖಚಿತವೇ?",
+ acceptSuccess:"ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ! ಸ್ಟಾಕ್ ಅಪ್‌ಡೇಟ್ ಆಗಿದೆ.",
+ rejectSuccess:"ವಿನಂತಿ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ.",error:"ದೋಷ: ",rejectError:"ತಿರಸ್ಕರಿಸುವಲ್ಲಿ ದೋಷ: ",
+ product:"ಉತ್ಪನ್ನ",pleaseLogin:"ದಯವಿಟ್ಟು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ.",
+ filterEmpty:"ಈ ವಿಭಾಗದಲ್ಲಿ ವಿನಂತಿಗಳಿಲ್ಲ.",
+ acceptedOther:"ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ",
+},
+hi:{
+ title:"प्राप्त ऑर्डर अनुरोध",subtitle:"अपने उत्पादों के उपभोक्ता अनुरोध प्रबंधित करें",
+ dashboard:"डैशबोर्ड",refresh:"रिफ्रेश",total:"कुल अनुरोध",
+ pending:"लंबित",accepted:"स्वीकृत",rejected:"अस्वीकृत",
+ allRequests:"सभी अनुरोध",loading:"अनुरोध लोड हो रहे हैं...",
+ empty:"कोई ऑर्डर अनुरोध नहीं मिला।",consumer:"उपभोक्ता विवरण",
+ name:"नाम",phone:"फोन नंबर",notProvided:"नहीं दिया गया",
+ requestId:"अनुरोध ID",category:"श्रेणी",na:"लागू नहीं",
+ quantity:"अनुरोधित मात्रा",date:"तारीख",unknown:"अज्ञात",
+ message:"संदेश",noMessage:"कोई संदेश नहीं",accept:"स्वीकार करें",reject:"अस्वीकार करें",
+ confirmAccept:"क्या आप अनुरोध स्वीकार करना चाहते हैं? उत्पाद स्टॉक कम हो जाएगा।",
+ confirmReject:"क्या आप इस अनुरोध को अस्वीकार करना चाहते हैं?",
+ acceptSuccess:"ऑर्डर स्वीकार हुआ! स्टॉक सफलतापूर्वक अपडेट हुआ।",
+ rejectSuccess:"अनुरोध अस्वीकार किया गया।",error:"त्रुटि: ",rejectError:"अस्वीकार करने में त्रुटि: ",
+ product:"उत्पाद",pleaseLogin:"कृपया पहले लॉगिन करें.",
+ filterEmpty:"इस श्रेणी में कोई अनुरोध नहीं।",
+ acceptedOther:"ऑर्डर सफलतापूर्वक स्वीकार हुआ",
+},
+te:{
+ title:"వచ్చిన ఆర్డర్ అభ్యర్థనలు",subtitle:"మీ ఉత్పత్తుల వినియోగదారుల అభ్యర్థనలను నిర్వహించండి",
+ dashboard:"డాష్‌బోర్డ్",refresh:"రిఫ్రెష్",total:"మొత్తం అభ్యర్థనలు",
+ pending:"పెండింగ్",accepted:"ఆమోదించబడినవి",rejected:"తిరస్కరించబడినవి",
+ allRequests:"అన్ని అభ్యర్థనలు",loading:"అభ్యర్థనలు లోడ్ అవుతున్నాయి...",
+ empty:"ఆర్డర్ అభ్యర్థనలు లేవు.",consumer:"వినియోగదారు వివరాలు",
+ name:"పేరు",phone:"ఫోన్ నంబర్",notProvided:"ఇవ్వలేదు",
+ requestId:"అభ్యర్థన ID",category:"వర్గం",na:"వర్తించదు",
+ quantity:"కోరిన పరిమాణం",date:"తేదీ",unknown:"తెలియదు",
+ message:"సందేశం",noMessage:"సందేశం లేదు",accept:"ఆమోదించండి",reject:"తిరస్కరించండి",
+ confirmAccept:"ఈ అభ్యర్థనను ఆమోదించాలా? ఉత్పత్తి స్టాక్ తగ్గుతుంది.",
+ confirmReject:"ఈ అభ్యర్థనను తిరస్కరించాలా?",
+ acceptSuccess:"ఆర్డర్ ఆమోదించబడింది! స్టాక్ నవీకరించబడింది.",
+ rejectSuccess:"అభ్యర్థన తిరస్కరించబడింది.",error:"లోపం: ",rejectError:"తిరస్కరణ లోపం: ",
+ product:"ఉత్పత్తి",pleaseLogin:"దయచేసి ముందుగా లాగిన్ అవ్వండి.",
+ filterEmpty:"ఈ వర్గంలో అభ్యర్థనలు లేవు.",
+ acceptedOther:"ఆర్డర్ విజయవంతంగా ఆమోదించబడింది",
+},
+ta:{
+ title:"பெறப்பட்ட ஆர்டர் கோரிக்கைகள்",subtitle:"உங்கள் தயாரிப்புகளுக்கான நுகர்வோர் கோரிக்கைகளை நிர்வகிக்கவும்",
+ dashboard:"டாஷ்போர்டு",refresh:"புதுப்பிக்கவும்",total:"மொத்த கோரிக்கைகள்",
+ pending:"நிலுவையில்",accepted:"ஏற்றுக்கொள்ளப்பட்டது",rejected:"நிராகரிக்கப்பட்டது",
+ allRequests:"அனைத்து கோரிக்கைகள்",loading:"கோரிக்கைகள் ஏற்றப்படுகின்றன...",
+ empty:"ஆர்டர் கோரிக்கைகள் இல்லை.",consumer:"நுகர்வோர் விவரங்கள்",
+ name:"பெயர்",phone:"தொலைபேசி எண்",notProvided:"வழங்கப்படவில்லை",
+ requestId:"கோரிக்கை ID",category:"வகை",na:"பொருந்தாது",
+ quantity:"கோரிய அளவு",date:"தேதி",unknown:"தெரியவில்லை",
+ message:"செய்தி",noMessage:"செய்தி இல்லை",accept:"ஏற்கவும்",reject:"நிராகரிக்கவும்",
+ confirmAccept:"இந்த கோரிக்கையை ஏற்கவா? தயாரிப்பு இருப்பு குறையும்.",
+ confirmReject:"இந்த கோரிக்கையை நிராகரிக்கவா?",
+ acceptSuccess:"ஆர்டர் ஏற்கப்பட்டது! இருப்பு புதுப்பிக்கப்பட்டது.",
+ rejectSuccess:"கோரிக்கை நிராகரிக்கப்பட்டது.",error:"பிழை: ",rejectError:"நிராகரிப்பதில் பிழை: ",
+ product:"தயாரிப்பு",pleaseLogin:"முதலில் உள்நுழையவும்.",
+ filterEmpty:"இந்த வகையில் கோரிக்கைகள் இல்லை.",
+ acceptedOther:"ஆர்டர் வெற்றிகரமாக ஏற்கப்பட்டது",
+}
+};
+
+function getLanguage(){
+ return localStorage.getItem("agritec_dashboard_language") || "en";
+}
+
+function t(key){
+ return translations[getLanguage()]?.[key] || translations.en[key] || key;
+}
+
+function applyLanguage(){
+ const lang=getLanguage();
+ document.getElementById("languageSelect").value=lang;
+ document.documentElement.lang=lang;
+
+ document.querySelectorAll("[data-i18n]").forEach(el=>{
+   const key=el.getAttribute("data-i18n");
+   if(translations[lang][key]) el.textContent=translations[lang][key];
+ });
+ displayRequests();
+}
+
+document.getElementById("languageSelect").addEventListener("change",function(){
+ localStorage.setItem("agritec_dashboard_language",this.value);
+ applyLanguage();
+});
+
+function escapeHTML(value){
+ return String(value ?? "")
+ .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+ .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+ .replace(/'/g,"&#039;");
+}
+
+async function initialize(){
+ const {data,error}=await supabaseClient.auth.getUser();
+
+ if(error||!data.user){
+  alert(t("pleaseLogin"));
+  window.location.href="index.html";
+  return;
+ }
+
+ currentUser=data.user;
+ applyLanguage();
+ await loadRequests();
+}
+
+async function loadRequests(){
+ if(!currentUser)return;
+
+ document.getElementById("loading").style.display="block";
+ document.getElementById("empty").style.display="none";
+ document.getElementById("error").style.display="none";
+ document.getElementById("requestsContainer").innerHTML="";
+
+ const {data,error}=await supabaseClient
+ .from("consumer_orders")
+ .select("*")
+ .eq("farmer_id",currentUser.id)
+ .order("created_at",{ascending:false});
+
+ document.getElementById("loading").style.display="none";
+
+ if(error){
+  showError(error.message);
+  return;
+ }
+
+ allRequests=data||[];
+ updateSummary();
+ displayRequests();
+}
+
+function updateSummary(){
+ document.getElementById("totalCount").textContent=allRequests.length;
+ document.getElementById("pendingCount").textContent=
+  allRequests.filter(r=>r.status==="Pending").length;
+ document.getElementById("acceptedCount").textContent=
+  allRequests.filter(r=>r.status==="Accepted").length;
+ document.getElementById("rejectedCount").textContent=
+  allRequests.filter(r=>r.status==="Rejected").length;
+}
+
+function displayRequests(){
+ if(!currentUser)return;
+
+ const container=document.getElementById("requestsContainer");
+ const filter=document.getElementById("statusFilter").value;
+ container.innerHTML="";
+
+ let filtered=allRequests;
+ if(filter!=="All")filtered=allRequests.filter(r=>r.status===filter);
+
+ if(filtered.length===0){
+  document.getElementById("empty").style.display="block";
+  document.getElementById("empty").textContent=
+   allRequests.length===0?t("empty"):t("filterEmpty");
+  return;
+ }
+
+ document.getElementById("empty").style.display="none";
+
+ filtered.forEach(request=>{
+  const card=document.createElement("div");
+  card.className="request-card";
+
+  const statusClass=request.status==="Accepted"?"accepted":
+    request.status==="Rejected"?"rejected":"pending";
+
+  const date=request.created_at?
+   new Date(request.created_at).toLocaleString():t("unknown");
+
+  const statusText=request.status==="Accepted"?t("accepted"):
+   request.status==="Rejected"?t("rejected"):t("pending");
+
+  card.innerHTML=`
+   <h2>${escapeHTML(request.product_name||t("product"))}</h2>
+
+   <div class="consumer-details">
+    <h3>👤 ${t("consumer")}</h3>
+    <div class="info"><strong>${t("name")}:</strong>
+     ${escapeHTML(request.consumer_name||t("notProvided"))}</div>
+    <div class="info"><strong>${t("phone")}:</strong>
+     ${escapeHTML(request.consumer_phone||t("notProvided"))}</div>
+   </div>
+
+   <div class="info"><strong>${t("requestId")}:</strong>
+    ${escapeHTML(request.id)}</div>
+   <div class="info"><strong>${t("category")}:</strong>
+    ${escapeHTML(request.product_type||t("na"))}</div>
+   <div class="info"><strong>${t("quantity")}:</strong>
+    ${escapeHTML(String(request.quantity??""))}</div>
+   <div class="info"><strong>${t("date")}:</strong>
+    ${escapeHTML(date)}</div>
+
+   <div class="message"><strong>${t("message")}:</strong><br>
+    ${escapeHTML(request.message||t("noMessage"))}</div>
+
+   <span class="status ${statusClass}">${escapeHTML(statusText)}</span>
+
+   ${request.status==="Pending"?`
+    <div class="actions">
+     <button class="accept-btn" data-action="accept">✓ ${t("accept")}</button>
+     <button class="reject-btn" data-action="reject">✕ ${t("reject")}</button>
+    </div>`:""}
+  `;
+
+  const acceptBtn=card.querySelector('[data-action="accept"]');
+  const rejectBtn=card.querySelector('[data-action="reject"]');
+
+  if(acceptBtn)acceptBtn.addEventListener("click",()=>acceptRequest(request.id,acceptBtn));
+  if(rejectBtn)rejectBtn.addEventListener("click",()=>rejectRequest(request.id,rejectBtn));
+
+  container.appendChild(card);
+ });
+}
+
+async function acceptRequest(orderId,button){
+ if(!confirm(t("confirmAccept")))return;
+
+ button.disabled=true;
+
+ const {data,error}=await supabaseClient.rpc(
+  "accept_consumer_order",{order_id:orderId}
+ );
+
+ if(error){
+  alert(t("error")+error.message);
+  button.disabled=false;
+  return;
+ }
+
+ if(data!=="Order accepted successfully"){
+  alert(data);
+  button.disabled=false;
+  await loadRequests();
+  return;
+ }
+
+ alert(t("acceptSuccess"));
+ await loadRequests();
+}
+
+async function rejectRequest(orderId,button){
+ if(!confirm(t("confirmReject")))return;
+
+ button.disabled=true;
+
+ const {error}=await supabaseClient
+ .from("consumer_orders")
+ .update({status:"Rejected"})
+ .eq("id",orderId)
+ .eq("farmer_id",currentUser.id)
+ .eq("status","Pending");
+
+ if(error){
+  alert(t("rejectError")+error.message);
+  button.disabled=false;
+  return;
+ }
+
+ alert(t("rejectSuccess"));
+ await loadRequests();
+}
+
+function showError(message){
+ const errorDiv=document.getElementById("error");
+ errorDiv.style.display="block";
+ errorDiv.textContent=t("error")+message;
+}
+
+applyLanguage();
+initialize();
+</script>
+
+</body>
+</html>
+```

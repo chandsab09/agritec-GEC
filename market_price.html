@@ -1,0 +1,414 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Prices - Farm Management</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 25px;
+    background: #f1f8f1;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px #ccc;
+}
+
+h1 {
+    color: #236b35;
+    text-align: center;
+}
+
+.language-box {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 15px;
+}
+
+.language-box select {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+}
+
+.info-box {
+    background: #e8f5e9;
+    color: #236b35;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.back-btn {
+    background: #555;
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.back-btn:hover {
+    background: #333;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 25px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+th {
+    background: #236b35;
+    color: white;
+}
+
+tr:nth-child(even) {
+    background: #f3f3f3;
+}
+
+.loading {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        padding: 12px;
+    }
+
+    table {
+        min-width: 600px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="language-box">
+        <select id="languageSelect">
+            <option value="en">English</option>
+            <option value="kn">ಕನ್ನಡ</option>
+            <option value="hi">हिन्दी</option>
+            <option value="te">తెలుగు</option>
+            <option value="ta">தமிழ்</option>
+        </select>
+    </div>
+
+    <button class="back-btn" id="backButton" onclick="goBack()">
+        Back to Dashboard
+    </button>
+
+    <h1 id="pageTitle">📈 Crop Market Prices</h1>
+
+    <div class="info-box">
+        <strong id="infoTitle">Current Crop Market Prices</strong>
+        <p id="infoDescription">
+            View the latest crop prices updated by the Admin.
+        </p>
+    </div>
+
+    <h3 id="detailsTitle">Market Price Details</h3>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th id="cropHeading">Crop Name</th>
+                    <th id="priceHeading">Price (₹/Quintal)</th>
+                    <th id="cityHeading">City</th>
+                    <th id="dateHeading">Date</th>
+                </tr>
+            </thead>
+
+            <tbody id="priceTable">
+                <tr>
+                    <td colspan="4" class="loading" id="loadingText">
+                        Loading market prices...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+
+const table = document.getElementById("priceTable");
+const languageSelect = document.getElementById("languageSelect");
+
+let currentLanguage =
+    localStorage.getItem("agritec_dashboard_language") || "en";
+
+const translations = {
+
+en: {
+    back: "Back to Dashboard",
+    title: "📈 Crop Market Prices",
+    infoTitle: "Current Crop Market Prices",
+    infoDescription: "View the latest crop prices updated by the Admin.",
+    details: "Market Price Details",
+    crop: "Crop Name",
+    price: "Price (₹/Quintal)",
+    city: "City",
+    date: "Date",
+    loading: "Loading market prices...",
+    noPrices: "No market prices available currently.",
+    error: "Unable to load prices: ",
+    login: "Please login first!"
+},
+
+kn: {
+    back: "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಹಿಂತಿರುಗಿ",
+    title: "📈 ಬೆಳೆ ಮಾರುಕಟ್ಟೆ ಬೆಲೆಗಳು",
+    infoTitle: "ಪ್ರಸ್ತುತ ಬೆಳೆ ಮಾರುಕಟ್ಟೆ ಬೆಲೆಗಳು",
+    infoDescription: "ಅಡ್ಮಿನ್ ಅಪ್‌ಡೇಟ್ ಮಾಡಿದ ಇತ್ತೀಚಿನ ಬೆಳೆ ಬೆಲೆಗಳನ್ನು ವೀಕ್ಷಿಸಿ.",
+    details: "ಮಾರುಕಟ್ಟೆ ಬೆಲೆ ವಿವರಗಳು",
+    crop: "ಬೆಳೆಯ ಹೆಸರು",
+    price: "ಬೆಲೆ (₹/ಕ್ವಿಂಟಾಲ್)",
+    city: "ನಗರ",
+    date: "ದಿನಾಂಕ",
+    loading: "ಮಾರುಕಟ್ಟೆ ಬೆಲೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+    noPrices: "ಪ್ರಸ್ತುತ ಯಾವುದೇ ಮಾರುಕಟ್ಟೆ ಬೆಲೆ ಲಭ್ಯವಿಲ್ಲ.",
+    error: "ಬೆಲೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: ",
+    login: "ದಯವಿಟ್ಟು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ!"
+},
+
+hi: {
+    back: "डैशबोर्ड पर वापस जाएं",
+    title: "📈 फसल बाजार की कीमतें",
+    infoTitle: "वर्तमान फसल बाजार की कीमतें",
+    infoDescription: "व्यवस्थापक द्वारा अपडेट की गई नवीनतम फसल कीमतें देखें।",
+    details: "बाजार मूल्य विवरण",
+    crop: "फसल का नाम",
+    price: "कीमत (₹/क्विंटल)",
+    city: "शहर",
+    date: "तारीख",
+    loading: "बाजार की कीमतें लोड हो रही हैं...",
+    noPrices: "वर्तमान में कोई बाजार मूल्य उपलब्ध नहीं है।",
+    error: "कीमतें लोड नहीं हो सकीं: ",
+    login: "कृपया पहले लॉगिन करें!"
+},
+
+te: {
+    back: "డాష్‌బోర్డ్‌కు తిరిగి వెళ్ళండి",
+    title: "📈 పంట మార్కెట్ ధరలు",
+    infoTitle: "ప్రస్తుత పంట మార్కెట్ ధరలు",
+    infoDescription: "అడ్మిన్ అప్‌డేట్ చేసిన తాజా పంట ధరలను చూడండి.",
+    details: "మార్కెట్ ధరల వివరాలు",
+    crop: "పంట పేరు",
+    price: "ధర (₹/క్వింటాల్)",
+    city: "నగరం",
+    date: "తేదీ",
+    loading: "మార్కెట్ ధరలు లోడ్ అవుతున్నాయి...",
+    noPrices: "ప్రస్తుతం మార్కెట్ ధరలు అందుబాటులో లేవు.",
+    error: "ధరలను లోడ్ చేయలేకపోయాము: ",
+    login: "దయచేసి ముందుగా లాగిన్ అవ్వండి!"
+},
+
+ta: {
+    back: "டாஷ்போர்டுக்குத் திரும்பு",
+    title: "📈 பயிர் சந்தை விலைகள்",
+    infoTitle: "தற்போதைய பயிர் சந்தை விலைகள்",
+    infoDescription: "நிர்வாகி புதுப்பித்த சமீபத்திய பயிர் விலைகளைக் காண்க.",
+    details: "சந்தை விலை விவரங்கள்",
+    crop: "பயிரின் பெயர்",
+    price: "விலை (₹/குவிண்டால்)",
+    city: "நகரம்",
+    date: "தேதி",
+    loading: "சந்தை விலைகள் ஏற்றப்படுகின்றன...",
+    noPrices: "தற்போது சந்தை விலைகள் கிடைக்கவில்லை.",
+    error: "விலைகளை ஏற்ற முடியவில்லை: ",
+    login: "முதலில் உள்நுழையவும்!"
+}
+
+};
+
+
+// CHANGE LANGUAGE
+
+function changeLanguage(lang) {
+
+    if (!translations[lang]) {
+        lang = "en";
+    }
+
+    currentLanguage = lang;
+
+    localStorage.setItem("agritec_dashboard_language", lang);
+
+    const t = translations[lang];
+
+    document.documentElement.lang = lang;
+
+    document.getElementById("backButton").textContent = t.back;
+    document.getElementById("pageTitle").textContent = t.title;
+
+    document.getElementById("infoTitle").textContent = t.infoTitle;
+    document.getElementById("infoDescription").textContent = t.infoDescription;
+
+    document.getElementById("detailsTitle").textContent = t.details;
+
+    document.getElementById("cropHeading").textContent = t.crop;
+    document.getElementById("priceHeading").textContent = t.price;
+    document.getElementById("cityHeading").textContent = t.city;
+    document.getElementById("dateHeading").textContent = t.date;
+
+    document.getElementById("loadingText").textContent = t.loading;
+
+    languageSelect.value = lang;
+
+    loadPrices();
+}
+
+languageSelect.addEventListener("change", function() {
+    changeLanguage(this.value);
+});
+
+
+// BACK TO DASHBOARD
+
+function goBack() {
+    window.location.href = "p.html";
+}
+
+
+// CHECK LOGIN
+
+async function getCurrentUser() {
+
+    const { data, error } =
+        await supabaseClient.auth.getUser();
+
+    if (error || !data.user) {
+        alert(translations[currentLanguage].login);
+        window.location.href = "login.html";
+        return null;
+    }
+
+    return data.user;
+}
+
+
+// LOAD MARKET PRICES
+
+async function loadPrices() {
+
+    const t = translations[currentLanguage];
+
+    const user = await getCurrentUser();
+
+    if (!user) return;
+
+    const { data, error } = await supabaseClient
+        .from("market_prices")
+        .select("crop_name, price_per_quintal, city, price_date")
+        .order("price_date", { ascending: false });
+
+    if (error) {
+
+        table.innerHTML = `
+            <tr>
+                <td colspan="4">
+                    ${t.error}${error.message}
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    if (!data || data.length === 0) {
+
+        table.innerHTML = `
+            <tr>
+                <td colspan="4">
+                    ${t.noPrices}
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    table.innerHTML = "";
+
+    data.forEach(item => {
+
+        const row = document.createElement("tr");
+
+        // CROP NAME
+        const cropCell = document.createElement("td");
+        cropCell.textContent = item.crop_name || "-";
+
+        // PRICE
+        const priceCell = document.createElement("td");
+
+        priceCell.textContent =
+            "₹" + Number(item.price_per_quintal).toLocaleString("en-IN");
+
+        // CITY
+        const cityCell = document.createElement("td");
+        cityCell.textContent = item.city || "-";
+
+        // DATE
+        const dateCell = document.createElement("td");
+        dateCell.textContent = item.price_date || "-";
+
+        row.appendChild(cropCell);
+        row.appendChild(priceCell);
+        row.appendChild(cityCell);
+        row.appendChild(dateCell);
+
+        table.appendChild(row);
+
+    });
+
+}
+
+
+// START PAGE
+
+changeLanguage(currentLanguage);
+
+</script>
+
+</body>
+</html>

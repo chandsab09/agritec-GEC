@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crop Management</title>
+
+<link rel="stylesheet" href="CSS/style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+}
+
+.language-box {
+    width: 95%;
+    margin: 15px auto;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.language-box select {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+}
+
+.card {
+    width: 95%;
+    max-width: 650px;
+    margin: 20px auto;
+    padding: 25px;
+}
+
+.card input {
+    width: 100%;
+    padding: 11px;
+    margin-top: 5px;
+}
+
+.card label {
+    font-weight: bold;
+}
+
+button {
+    padding: 10px 16px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.table-container {
+    width: 95%;
+    margin: 25px auto;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+th {
+    background: #2e7d32;
+    color: white;
+}
+
+.delete-btn {
+    background: #d32f2f;
+    color: white;
+}
+
+#message {
+    margin-top: 15px;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="language-box">
+    <select id="languageSelect">
+        <option value="en">English</option>
+        <option value="kn">ಕನ್ನಡ</option>
+        <option value="hi">हिन्दी</option>
+        <option value="te">తెలుగు</option>
+        <option value="ta">தமிழ்</option>
+    </select>
+</div>
+
+<h1 id="pageTitle">🌱 Crop Management</h1>
+
+<div class="card">
+
+    <h2 id="addTitle">Add Crop</h2>
+
+    <form id="cropForm">
+
+        <label id="nameLabel">Crop Name</label><br>
+        <input type="text" id="cropName" required>
+        <br><br>
+
+        <label id="typeLabel">Crop Type</label><br>
+        <input type="text" id="cropType" required>
+        <br><br>
+
+        <label id="areaLabel">Area (Acres)</label><br>
+        <input type="number" id="area" min="0.01" step="0.01" required>
+        <br><br>
+
+        <label id="plantingLabel">Planting Date</label><br>
+        <input type="date" id="plantingDate" required>
+        <br><br>
+
+        <label id="harvestLabel">Harvest Date</label><br>
+        <input type="date" id="harvestDate" required>
+        <br><br>
+
+        <button type="submit" id="addButton">Add Crop</button>
+
+        <button type="button" id="backButton"
+        onclick="window.location.href='p.html'">
+            Back
+        </button>
+
+    </form>
+
+    <p id="message"></p>
+
+</div>
+
+<h2 id="viewTitle">📋 View Crops</h2>
+
+<div class="table-container">
+
+<table>
+
+<thead>
+<tr>
+    <th id="thName">Crop Name</th>
+    <th id="thType">Crop Type</th>
+    <th id="thArea">Area</th>
+    <th id="thPlanting">Planting Date</th>
+    <th id="thHarvest">Harvest Date</th>
+    <th id="thAction">Action</th>
+</tr>
+</thead>
+
+<tbody id="cropTable">
+<tr>
+    <td colspan="6">Loading crops...</td>
+</tr>
+</tbody>
+
+</table>
+
+</div>
+
+<script>
+
+const form = document.getElementById("cropForm");
+const table = document.getElementById("cropTable");
+const message = document.getElementById("message");
+const addButton = document.getElementById("addButton");
+const languageSelect = document.getElementById("languageSelect");
+
+let currentLanguage =
+    localStorage.getItem("agritec_dashboard_language") || "en";
+
+
+const translations = {
+
+en: {
+    pageTitle: "🌱 Crop Management",
+    addTitle: "Add Crop",
+    name: "Crop Name",
+    type: "Crop Type",
+    area: "Area (Acres)",
+    planting: "Planting Date",
+    harvest: "Harvest Date",
+    add: "Add Crop",
+    back: "Back",
+    view: "📋 View Crops",
+    thName: "Crop Name",
+    thType: "Crop Type",
+    thArea: "Area",
+    thPlanting: "Planting Date",
+    thHarvest: "Harvest Date",
+    thAction: "Action",
+    loading: "Loading crops...",
+    login: "Please login first!",
+    noCrops: "No crops added yet.",
+    delete: "Delete",
+    confirm: "Are you sure you want to delete this crop?",
+    added: "Crop added successfully!",
+    deleted: "Crop deleted successfully!",
+    saving: "Saving crop details...",
+    dateError: "Harvest date cannot be before planting date.",
+    error: "Error: ",
+    deleteError: "Delete error: ",
+    acres: " Acres"
+},
+
+kn: {
+    pageTitle: "🌱 ಬೆಳೆ ನಿರ್ವಹಣೆ",
+    addTitle: "ಬೆಳೆ ಸೇರಿಸಿ",
+    name: "ಬೆಳೆಯ ಹೆಸರು",
+    type: "ಬೆಳೆಯ ವಿಧ",
+    area: "ವಿಸ್ತೀರ್ಣ (ಎಕರೆ)",
+    planting: "ಬಿತ್ತನೆ ದಿನಾಂಕ",
+    harvest: "ಕೊಯ್ಲು ದಿನಾಂಕ",
+    add: "ಬೆಳೆ ಸೇರಿಸಿ",
+    back: "ಹಿಂದಕ್ಕೆ",
+    view: "📋 ಬೆಳೆಗಳ ವಿವರ",
+    thName: "ಬೆಳೆಯ ಹೆಸರು",
+    thType: "ಬೆಳೆಯ ವಿಧ",
+    thArea: "ವಿಸ್ತೀರ್ಣ",
+    thPlanting: "ಬಿತ್ತನೆ ದಿನಾಂಕ",
+    thHarvest: "ಕೊಯ್ಲು ದಿನಾಂಕ",
+    thAction: "ಕಾರ್ಯ",
+    loading: "ಬೆಳೆಗಳ ವಿವರ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    login: "ದಯವಿಟ್ಟು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ!",
+    noCrops: "ಇನ್ನೂ ಯಾವುದೇ ಬೆಳೆ ಸೇರಿಸಿಲ್ಲ.",
+    delete: "ಅಳಿಸಿ",
+    confirm: "ಈ ಬೆಳೆಯನ್ನು ಅಳಿಸಲು ನೀವು ಖಚಿತವಾಗಿದ್ದೀರಾ?",
+    added: "ಬೆಳೆ ಯಶಸ್ವಿಯಾಗಿ ಸೇರಿಸಲಾಗಿದೆ!",
+    deleted: "ಬೆಳೆ ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ!",
+    saving: "ಬೆಳೆ ವಿವರಗಳನ್ನು ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
+    dateError: "ಕೊಯ್ಲು ದಿನಾಂಕವು ಬಿತ್ತನೆ ದಿನಾಂಕಕ್ಕಿಂತ ಮುಂಚೆ ಇರಬಾರದು.",
+    error: "ದೋಷ: ",
+    deleteError: "ಅಳಿಸುವಿಕೆಯ ದೋಷ: ",
+    acres: " ಎಕರೆ"
+},
+
+hi: {
+    pageTitle: "🌱 फसल प्रबंधन",
+    addTitle: "फसल जोड़ें",
+    name: "फसल का नाम",
+    type: "फसल का प्रकार",
+    area: "क्षेत्रफल (एकड़)",
+    planting: "बुवाई की तारीख",
+    harvest: "कटाई की तारीख",
+    add: "फसल जोड़ें",
+    back: "वापस",
+    view: "📋 फसलों की सूची",
+    thName: "फसल का नाम",
+    thType: "फसल का प्रकार",
+    thArea: "क्षेत्रफल",
+    thPlanting: "बुवाई की तारीख",
+    thHarvest: "कटाई की तारीख",
+    thAction: "कार्य",
+    loading: "फसलें लोड हो रही हैं...",
+    login: "कृपया पहले लॉगिन करें!",
+    noCrops: "अभी तक कोई फसल नहीं जोड़ी गई है।",
+    delete: "हटाएं",
+    confirm: "क्या आप इस फसल को हटाना चाहते हैं?",
+    added: "फसल सफलतापूर्वक जोड़ी गई!",
+    deleted: "फसल सफलतापूर्वक हटाई गई!",
+    saving: "फसल विवरण सेव हो रहे हैं...",
+    dateError: "कटाई की तारीख बुवाई की तारीख से पहले नहीं हो सकती।",
+    error: "त्रुटि: ",
+    deleteError: "हटाने में त्रुटि: ",
+    acres: " एकड़"
+},
+
+te: {
+    pageTitle: "🌱 పంటల నిర్వహణ",
+    addTitle: "పంటను జోడించండి",
+    name: "పంట పేరు",
+    type: "పంట రకం",
+    area: "విస్తీర్ణం (ఎకరాలు)",
+    planting: "నాటే తేదీ",
+    harvest: "కోత తేదీ",
+    add: "పంటను జోడించండి",
+    back: "వెనక్కి",
+    view: "📋 పంటల వివరాలు",
+    thName: "పంట పేరు",
+    thType: "పంట రకం",
+    thArea: "విస్తీర్ణం",
+    thPlanting: "నాటే తేదీ",
+    thHarvest: "కోత తేదీ",
+    thAction: "చర్య",
+    loading: "పంటల వివరాలు లోడ్ అవుతున్నాయి...",
+    login: "దయచేసి ముందుగా లాగిన్ అవ్వండి!",
+    noCrops: "ఇంకా పంటలు జోడించబడలేదు.",
+    delete: "తొలగించు",
+    confirm: "ఈ పంటను తొలగించాలా?",
+    added: "పంట విజయవంతంగా జోడించబడింది!",
+    deleted: "పంట విజయవంతంగా తొలగించబడింది!",
+    saving: "పంట వివరాలు సేవ్ అవుతున్నాయి...",
+    dateError: "కోత తేదీ నాటే తేదీ కంటే ముందు ఉండకూడదు.",
+    error: "లోపం: ",
+    deleteError: "తొలగింపు లోపం: ",
+    acres: " ఎకరాలు"
+},
+
+ta: {
+    pageTitle: "🌱 பயிர் மேலாண்மை",
+    addTitle: "பயிரைச் சேர்க்கவும்",
+    name: "பயிரின் பெயர்",
+    type: "பயிர் வகை",
+    area: "பரப்பளவு (ஏக்கர்)",
+    planting: "நடவு தேதி",
+    harvest: "அறுவடை தேதி",
+    add: "பயிரைச் சேர்க்கவும்",
+    back: "பின்செல்",
+    view: "📋 பயிர்களின் விவரம்",
+    thName: "பயிரின் பெயர்",
+    thType: "பயிர் வகை",
+    thArea: "பரப்பளவு",
+    thPlanting: "நடவு தேதி",
+    thHarvest: "அறுவடை தேதி",
+    thAction: "செயல்",
+    loading: "பயிர் விவரங்கள் ஏற்றப்படுகின்றன...",
+    login: "முதலில் உள்நுழையவும்!",
+    noCrops: "இன்னும் பயிர்கள் சேர்க்கப்படவில்லை.",
+    delete: "நீக்கு",
+    confirm: "இந்த பயிரை நீக்க விரும்புகிறீர்களா?",
+    added: "பயிர் வெற்றிகரமாக சேர்க்கப்பட்டது!",
+    deleted: "பயிர் வெற்றிகரமாக நீக்கப்பட்டது!",
+    saving: "பயிர் விவரங்கள் சேமிக்கப்படுகின்றன...",
+    dateError: "அறுவடை தேதி நடவு தேதிக்கு முன் இருக்கக்கூடாது.",
+    error: "பிழை: ",
+    deleteError: "நீக்குவதில் பிழை: ",
+    acres: " ஏக்கர்"
+}
+
+};
+
+
+// LANGUAGE CHANGE
+
+function changeLanguage(lang) {
+
+    currentLanguage = lang;
+
+    localStorage.setItem("agritec_dashboard_language", lang);
+
+    const t = translations[lang];
+
+    document.documentElement.lang = lang;
+
+    document.getElementById("pageTitle").textContent = t.pageTitle;
+    document.getElementById("addTitle").textContent = t.addTitle;
+
+    document.getElementById("nameLabel").textContent = t.name;
+    document.getElementById("typeLabel").textContent = t.type;
+    document.getElementById("areaLabel").textContent = t.area;
+    document.getElementById("plantingLabel").textContent = t.planting;
+    document.getElementById("harvestLabel").textContent = t.harvest;
+
+    document.getElementById("addButton").textContent = t.add;
+    document.getElementById("backButton").textContent = t.back;
+
+    document.getElementById("viewTitle").textContent = t.view;
+
+    document.getElementById("thName").textContent = t.thName;
+    document.getElementById("thType").textContent = t.thType;
+    document.getElementById("thArea").textContent = t.thArea;
+    document.getElementById("thPlanting").textContent = t.thPlanting;
+    document.getElementById("thHarvest").textContent = t.thHarvest;
+    document.getElementById("thAction").textContent = t.thAction;
+
+    languageSelect.value = lang;
+
+    loadCrops();
+}
+
+
+languageSelect.addEventListener("change", function() {
+    changeLanguage(this.value);
+});
+
+
+// ADD CROP
+
+form.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const t = translations[currentLanguage];
+
+    addButton.disabled = true;
+    message.innerText = t.saving;
+
+    try {
+
+        const { data: userData, error: userError } =
+            await supabaseClient.auth.getUser();
+
+        if (userError) throw userError;
+
+        const user = userData.user;
+
+        if (!user) {
+            alert(t.login);
+            window.location.href = "login.html";
+            return;
+        }
+
+        const name = document.getElementById("cropName").value.trim();
+        const type = document.getElementById("cropType").value.trim();
+        const area = Number(document.getElementById("area").value);
+        const planting = document.getElementById("plantingDate").value;
+        const harvest = document.getElementById("harvestDate").value;
+
+        if (harvest < planting) {
+            message.innerText = t.dateError;
+            return;
+        }
+
+        const { error } = await supabaseClient
+            .from("crops")
+            .insert([{
+                crop_name: name,
+                crop_type: type,
+                area: area,
+                sowing_date: planting,
+                harvest_date: harvest,
+                user_id: user.id
+            }]);
+
+        if (error) throw error;
+
+        message.innerText = t.added;
+
+        form.reset();
+
+        loadCrops();
+
+    } catch (error) {
+
+        message.innerText = t.error + error.message;
+        console.error(error);
+
+    } finally {
+
+        addButton.disabled = false;
+
+    }
+
+});
+
+
+// VIEW CROPS
+
+async function loadCrops() {
+
+    const t = translations[currentLanguage];
+
+    const { data: userData, error: userError } =
+        await supabaseClient.auth.getUser();
+
+    if (userError || !userData.user) {
+        table.innerHTML =
+            `<tr><td colspan="6">${t.login}</td></tr>`;
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("crops")
+        .select("*")
+        .order("id", { ascending: false });
+
+    if (error) {
+
+        table.innerHTML =
+            `<tr><td colspan="6">${t.error}${error.message}</td></tr>`;
+
+        return;
+    }
+
+    table.innerHTML = "";
+
+    if (!data || data.length === 0) {
+
+        table.innerHTML =
+            `<tr><td colspan="6">${t.noCrops}</td></tr>`;
+
+        return;
+    }
+
+    data.forEach(crop => {
+
+        const row = document.createElement("tr");
+
+        const values = [
+            crop.crop_name,
+            crop.crop_type,
+            crop.area + t.acres,
+            crop.sowing_date,
+            crop.harvest_date
+        ];
+
+        values.forEach(value => {
+
+            const cell = document.createElement("td");
+            cell.textContent = value ?? "";
+            row.appendChild(cell);
+
+        });
+
+        const actionCell = document.createElement("td");
+
+        const deleteButton = document.createElement("button");
+
+        deleteButton.textContent = t.delete;
+        deleteButton.className = "delete-btn";
+
+        deleteButton.addEventListener("click", function() {
+            deleteCrop(crop.id);
+        });
+
+        actionCell.appendChild(deleteButton);
+        row.appendChild(actionCell);
+
+        table.appendChild(row);
+
+    });
+
+}
+
+
+// DELETE CROP
+
+async function deleteCrop(id) {
+
+    const t = translations[currentLanguage];
+
+    if (!confirm(t.confirm)) {
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("crops")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+
+        alert(t.deleteError + error.message);
+
+    } else {
+
+        alert(t.deleted);
+
+        loadCrops();
+
+    }
+
+}
+
+
+// INITIAL LOAD
+
+changeLanguage(currentLanguage);
+
+</script>
+
+</body>
+</html>

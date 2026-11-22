@@ -1,0 +1,616 @@
+``
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fertilizer Management</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#f1f8e9;margin:0;padding:20px}
+.container{max-width:950px;margin:30px auto;background:white;padding:25px;border-radius:12px;box-shadow:0 3px 12px #ccc}
+h1{text-align:center;color:#2e7d32}
+h2{color:#388e3c}
+label{display:block;margin-top:12px;font-weight:bold}
+input,select,textarea{width:100%;padding:11px;margin-top:6px;border:1px solid #bbb;border-radius:6px}
+button{background:#2e7d32;color:white;padding:11px 18px;border:none;border-radius:6px;cursor:pointer;margin-top:15px}
+button:hover{background:#1b5e20}
+.back{background:#555;margin-bottom:15px}
+.delete{background:#d32f2f;margin:0}
+.table-container{overflow-x:auto;margin-top:20px}
+table{width:100%;border-collapse:collapse;min-width:650px}
+th,td{border:1px solid #ddd;padding:10px;text-align:left}
+th{background:#388e3c;color:white}
+tr:nth-child(even){background:#f5f5f5}
+#message{margin-top:12px;font-weight:bold}
+.language-box{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:15px}
+.language-box select{width:auto;min-width:150px}
+@media(max-width:600px){
+body{padding:10px}
+.container{padding:15px;margin:10px auto}
+.language-box{justify-content:center}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="language-box">
+<label id="languageLabel" style="margin:0">Language:</label>
+<select id="languageSelect">
+<option value="en">English</option>
+<option value="kn">ಕನ್ನಡ</option>
+<option value="hi">हिंदी</option>
+<option value="te">తెలుగు</option>
+<option value="ta">தமிழ்</option>
+</select>
+</div>
+
+<button class="back" onclick="location.href='p.html'" id="backButton">
+← Back to Dashboard
+</button>
+
+<h1 id="pageTitle">🌱 Fertilizer Management</h1>
+
+<h2 id="formTitle">Add Fertilizer Details</h2>
+
+<form id="fertilizerForm">
+
+<label id="nameLabel">Fertilizer Name</label>
+<input type="text" id="fertilizerName" placeholder="Example: Compost" required>
+
+<label id="typeLabel">Fertilizer Type</label>
+<select id="fertilizerType" required>
+<option value="" id="selectType">Select Type</option>
+<option value="Organic" id="organic">Organic</option>
+<option value="Inorganic" id="inorganic">Inorganic</option>
+<option value="Biofertilizer" id="biofertilizer">Biofertilizer</option>
+</select>
+
+<label id="quantityLabel">Quantity</label>
+<input type="number" id="quantity" min="0.01" step="any" placeholder="Enter quantity" required>
+
+<label id="dateLabel">Application Date</label>
+<input type="date" id="applicationDate" required>
+
+<label id="cropLabel">Crop Name</label>
+<input type="text" id="cropName" placeholder="Example: Paddy">
+
+<label id="notesLabel">Notes</label>
+<textarea id="notes" placeholder="Enter additional details"></textarea>
+
+<button type="submit" id="saveButton">Save Fertilizer</button>
+
+</form>
+
+<p id="message"></p>
+
+<hr>
+
+<h2 id="recordsTitle">Fertilizer Records</h2>
+
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th id="nameTh">Name</th>
+<th id="typeTh">Type</th>
+<th id="quantityTh">Quantity</th>
+<th id="dateTh">Date</th>
+<th id="cropTh">Crop</th>
+<th id="notesTh">Notes</th>
+<th id="actionTh">Action</th>
+</tr>
+</thead>
+
+<tbody id="fertilizerTable">
+<tr><td colspan="7" id="loadingText">Loading records...</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+const form = document.getElementById("fertilizerForm");
+const message = document.getElementById("message");
+const table = document.getElementById("fertilizerTable");
+
+let currentLanguage =
+localStorage.getItem("agritec_dashboard_language") || "en";
+
+const translations = {
+
+en:{
+language:"Language:",
+title:"🌱 Fertilizer Management",
+formTitle:"Add Fertilizer Details",
+name:"Fertilizer Name",
+namePlaceholder:"Example: Compost",
+type:"Fertilizer Type",
+selectType:"Select Type",
+organic:"Organic",
+inorganic:"Inorganic",
+biofertilizer:"Biofertilizer",
+quantity:"Quantity",
+quantityPlaceholder:"Enter quantity",
+date:"Application Date",
+crop:"Crop Name",
+cropPlaceholder:"Example: Paddy",
+notes:"Notes",
+notesPlaceholder:"Enter additional details",
+save:"Save Fertilizer",
+records:"Fertilizer Records",
+nameTh:"Name",
+typeTh:"Type",
+quantityTh:"Quantity",
+dateTh:"Date",
+cropTh:"Crop",
+notesTh:"Notes",
+actionTh:"Action",
+loading:"Loading records...",
+noRecords:"No fertilizer records found.",
+delete:"Delete",
+back:"← Back to Dashboard",
+saved:"Fertilizer record saved successfully!",
+saving:"Saving fertilizer record...",
+error:"Error: ",
+confirmDelete:"Are you sure you want to delete this record?",
+deleted:"Record deleted successfully!",
+login:"Please login first.",
+notesEmpty:"-"
+},
+
+kn:{
+language:"ಭಾಷೆ:",
+title:"🌱 ಗೊಬ್ಬರ ನಿರ್ವಹಣೆ",
+formTitle:"ಗೊಬ್ಬರದ ವಿವರಗಳನ್ನು ಸೇರಿಸಿ",
+name:"ಗೊಬ್ಬರದ ಹೆಸರು",
+namePlaceholder:"ಉದಾಹರಣೆ: ಕಾಂಪೋಸ್ಟ್",
+type:"ಗೊಬ್ಬರದ ವಿಧ",
+selectType:"ವಿಧ ಆಯ್ಕೆಮಾಡಿ",
+organic:"ಸಾವಯವ ಗೊಬ್ಬರ",
+inorganic:"ರಾಸಾಯನಿಕ ಗೊಬ್ಬರ",
+biofertilizer:"ಜೈವಿಕ ಗೊಬ್ಬರ",
+quantity:"ಪ್ರಮಾಣ",
+quantityPlaceholder:"ಪ್ರಮಾಣ ನಮೂದಿಸಿ",
+date:"ಗೊಬ್ಬರ ಹಾಕಿದ ದಿನಾಂಕ",
+crop:"ಬೆಳೆ ಹೆಸರು",
+cropPlaceholder:"ಉದಾಹರಣೆ: ಭತ್ತ",
+notes:"ಟಿಪ್ಪಣಿಗಳು",
+notesPlaceholder:"ಹೆಚ್ಚುವರಿ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ",
+save:"ಗೊಬ್ಬರದ ವಿವರ ಉಳಿಸಿ",
+records:"ಗೊಬ್ಬರದ ದಾಖಲೆಗಳು",
+nameTh:"ಹೆಸರು",
+typeTh:"ವಿಧ",
+quantityTh:"ಪ್ರಮಾಣ",
+dateTh:"ದಿನಾಂಕ",
+cropTh:"ಬೆಳೆ",
+notesTh:"ಟಿಪ್ಪಣಿಗಳು",
+actionTh:"ಕ್ರಿಯೆ",
+loading:"ದಾಖಲೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+noRecords:"ಯಾವುದೇ ಗೊಬ್ಬರದ ದಾಖಲೆಗಳಿಲ್ಲ.",
+delete:"ಅಳಿಸಿ",
+back:"← ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಹಿಂತಿರುಗಿ",
+saved:"ಗೊಬ್ಬರದ ದಾಖಲೆ ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ!",
+saving:"ಗೊಬ್ಬರದ ದಾಖಲೆ ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
+error:"ದೋಷ: ",
+confirmDelete:"ಈ ದಾಖಲೆಯನ್ನು ಅಳಿಸಲು ಖಚಿತವಾಗಿದ್ದೀರಾ?",
+deleted:"ದಾಖಲೆ ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ!",
+login:"ದಯವಿಟ್ಟು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ.",
+notesEmpty:"-"
+},
+
+hi:{
+language:"भाषा:",
+title:"🌱 उर्वरक प्रबंधन",
+formTitle:"उर्वरक का विवरण जोड़ें",
+name:"उर्वरक का नाम",
+namePlaceholder:"उदाहरण: कम्पोस्ट",
+type:"उर्वरक का प्रकार",
+selectType:"प्रकार चुनें",
+organic:"जैविक",
+inorganic:"अकार्बनिक",
+biofertilizer:"जैव उर्वरक",
+quantity:"मात्रा",
+quantityPlaceholder:"मात्रा दर्ज करें",
+date:"उपयोग की तारीख",
+crop:"फसल का नाम",
+cropPlaceholder:"उदाहरण: धान",
+notes:"टिप्पणियाँ",
+notesPlaceholder:"अतिरिक्त जानकारी दर्ज करें",
+save:"उर्वरक सेव करें",
+records:"उर्वरक रिकॉर्ड",
+nameTh:"नाम",
+typeTh:"प्रकार",
+quantityTh:"मात्रा",
+dateTh:"तारीख",
+cropTh:"फसल",
+notesTh:"टिप्पणियाँ",
+actionTh:"कार्य",
+loading:"रिकॉर्ड लोड हो रहे हैं...",
+noRecords:"कोई उर्वरक रिकॉर्ड नहीं मिला।",
+delete:"हटाएं",
+back:"← डैशबोर्ड पर वापस जाएं",
+saved:"उर्वरक रिकॉर्ड सफलतापूर्वक सेव हुआ!",
+saving:"उर्वरक रिकॉर्ड सेव हो रहा है...",
+error:"त्रुटि: ",
+confirmDelete:"क्या आप इस रिकॉर्ड को हटाना चाहते हैं?",
+deleted:"रिकॉर्ड सफलतापूर्वक हटाया गया!",
+login:"कृपया पहले लॉगिन करें।",
+notesEmpty:"-"
+},
+
+te:{
+language:"భాష:",
+title:"🌱 ఎరువుల నిర్వహణ",
+formTitle:"ఎరువుల వివరాలను జోడించండి",
+name:"ఎరువు పేరు",
+namePlaceholder:"ఉదాహరణ: కంపోస్ట్",
+type:"ఎరువు రకం",
+selectType:"రకాన్ని ఎంచుకోండి",
+organic:"సేంద్రీయ ఎరువు",
+inorganic:"రసాయన ఎరువు",
+biofertilizer:"జీవ ఎరువు",
+quantity:"పరిమాణం",
+quantityPlaceholder:"పరిమాణాన్ని నమోదు చేయండి",
+date:"వేసిన తేదీ",
+crop:"పంట పేరు",
+cropPlaceholder:"ఉదాహరణ: వరి",
+notes:"గమనికలు",
+notesPlaceholder:"అదనపు వివరాలను నమోదు చేయండి",
+save:"ఎరువును సేవ్ చేయండి",
+records:"ఎరువుల రికార్డులు",
+nameTh:"పేరు",
+typeTh:"రకం",
+quantityTh:"పరిమాణం",
+dateTh:"తేదీ",
+cropTh:"పంట",
+notesTh:"గమనికలు",
+actionTh:"చర్య",
+loading:"రికార్డులు లోడ్ అవుతున్నాయి...",
+noRecords:"ఎరువుల రికార్డులు లేవు.",
+delete:"తొలగించు",
+back:"← డాష్‌బోర్డ్‌కు తిరిగి వెళ్ళండి",
+saved:"ఎరువుల రికార్డు విజయవంతంగా సేవ్ అయింది!",
+saving:"ఎరువుల రికార్డు సేవ్ అవుతోంది...",
+error:"లోపం: ",
+confirmDelete:"ఈ రికార్డును తొలగించాలనుకుంటున్నారా?",
+deleted:"రికార్డు విజయవంతంగా తొలగించబడింది!",
+login:"దయచేసి ముందుగా లాగిన్ అవ్వండి.",
+notesEmpty:"-"
+},
+
+ta:{
+language:"மொழி:",
+title:"🌱 உர மேலாண்மை",
+formTitle:"உர விவரங்களைச் சேர்க்கவும்",
+name:"உரத்தின் பெயர்",
+namePlaceholder:"உதாரணம்: இயற்கை உரம்",
+type:"உர வகை",
+selectType:"வகையைத் தேர்ந்தெடுக்கவும்",
+organic:"இயற்கை உரம்",
+inorganic:"செயற்கை உரம்",
+biofertilizer:"உயிர் உரம்",
+quantity:"அளவு",
+quantityPlaceholder:"அளவை உள்ளிடவும்",
+date:"உரமிட்ட தேதி",
+crop:"பயிர் பெயர்",
+cropPlaceholder:"உதாரணம்: நெல்",
+notes:"குறிப்புகள்",
+notesPlaceholder:"கூடுதல் விவரங்களை உள்ளிடவும்",
+save:"உரத்தை சேமிக்கவும்",
+records:"உர பதிவுகள்",
+nameTh:"பெயர்",
+typeTh:"வகை",
+quantityTh:"அளவு",
+dateTh:"தேதி",
+cropTh:"பயிர்",
+notesTh:"குறிப்புகள்",
+actionTh:"செயல்",
+loading:"பதிவுகள் ஏற்றப்படுகின்றன...",
+noRecords:"உர பதிவுகள் எதுவும் இல்லை.",
+delete:"நீக்கு",
+back:"← டாஷ்போர்டுக்குத் திரும்பு",
+saved:"உர பதிவு வெற்றிகரமாக சேமிக்கப்பட்டது!",
+saving:"உர பதிவு சேமிக்கப்படுகிறது...",
+error:"பிழை: ",
+confirmDelete:"இந்த பதிவை நீக்க விரும்புகிறீர்களா?",
+deleted:"பதிவு வெற்றிகரமாக நீக்கப்பட்டது!",
+login:"முதலில் உள்நுழையவும்.",
+notesEmpty:"-"
+}
+
+};
+
+function t(key){
+return translations[currentLanguage]?.[key] ||
+translations.en[key] || key;
+}
+
+
+// APPLY LANGUAGE
+
+function applyLanguage(){
+
+document.getElementById("languageSelect").value=currentLanguage;
+
+document.getElementById("languageLabel").textContent=t("language");
+
+document.getElementById("pageTitle").textContent=t("title");
+document.getElementById("formTitle").textContent=t("formTitle");
+
+document.getElementById("nameLabel").textContent=t("name");
+document.getElementById("fertilizerName").placeholder=t("namePlaceholder");
+
+document.getElementById("typeLabel").textContent=t("type");
+document.getElementById("selectType").textContent=t("selectType");
+document.getElementById("organic").textContent=t("organic");
+document.getElementById("inorganic").textContent=t("inorganic");
+document.getElementById("biofertilizer").textContent=t("biofertilizer");
+
+document.getElementById("quantityLabel").textContent=t("quantity");
+document.getElementById("quantity").placeholder=t("quantityPlaceholder");
+
+document.getElementById("dateLabel").textContent=t("date");
+
+document.getElementById("cropLabel").textContent=t("crop");
+document.getElementById("cropName").placeholder=t("cropPlaceholder");
+
+document.getElementById("notesLabel").textContent=t("notes");
+document.getElementById("notes").placeholder=t("notesPlaceholder");
+
+document.getElementById("saveButton").textContent=t("save");
+
+document.getElementById("recordsTitle").textContent=t("records");
+
+document.getElementById("nameTh").textContent=t("nameTh");
+document.getElementById("typeTh").textContent=t("typeTh");
+document.getElementById("quantityTh").textContent=t("quantityTh");
+document.getElementById("dateTh").textContent=t("dateTh");
+document.getElementById("cropTh").textContent=t("cropTh");
+document.getElementById("notesTh").textContent=t("notesTh");
+document.getElementById("actionTh").textContent=t("actionTh");
+
+document.getElementById("backButton").textContent=t("back");
+
+loadFertilizers();
+
+}
+
+
+// LANGUAGE CHANGE
+
+document.getElementById("languageSelect")
+.addEventListener("change",function(){
+
+currentLanguage=this.value;
+
+localStorage.setItem("agritec_dashboard_language",currentLanguage);
+
+applyLanguage();
+
+});
+
+
+// GET USER
+
+async function getUser(){
+
+const {data,error}=await supabaseClient.auth.getUser();
+
+if(error||!data.user){
+
+alert(t("login"));
+window.location.href="login.html";
+
+return null;
+}
+
+return data.user;
+
+}
+
+
+// LOAD FERTILIZERS
+
+async function loadFertilizers(){
+
+const user=await getUser();
+
+if(!user)return;
+
+table.innerHTML="";
+
+const loadingRow=document.createElement("tr");
+const loadingCell=document.createElement("td");
+
+loadingCell.colSpan=7;
+loadingCell.textContent=t("loading");
+
+loadingRow.appendChild(loadingCell);
+table.appendChild(loadingRow);
+
+const {data,error}=await supabaseClient
+.from("fertilizer_records")
+.select("*")
+.eq("user_id",user.id)
+.order("created_at",{ascending:false});
+
+if(error){
+
+table.innerHTML="";
+
+const row=document.createElement("tr");
+const cell=document.createElement("td");
+
+cell.colSpan=7;
+cell.textContent=t("error")+error.message;
+
+row.appendChild(cell);
+table.appendChild(row);
+
+return;
+}
+
+if(!data||data.length===0){
+
+table.innerHTML="";
+
+const row=document.createElement("tr");
+const cell=document.createElement("td");
+
+cell.colSpan=7;
+cell.textContent=t("noRecords");
+
+row.appendChild(cell);
+table.appendChild(row);
+
+return;
+}
+
+table.innerHTML="";
+
+data.forEach(item=>{
+
+const row=document.createElement("tr");
+
+const values=[
+item.fertilizer_name,
+item.fertilizer_type||"-",
+item.quantity??"-",
+item.application_date||"-",
+item.crop_name||"-",
+item.notes||"-"
+];
+
+values.forEach(value=>{
+
+const cell=document.createElement("td");
+cell.textContent=value;
+
+row.appendChild(cell);
+
+});
+
+const actionCell=document.createElement("td");
+const deleteButton=document.createElement("button");
+
+deleteButton.textContent=t("delete");
+deleteButton.className="delete";
+
+deleteButton.addEventListener("click",()=>{
+deleteFertilizer(item.id);
+});
+
+actionCell.appendChild(deleteButton);
+row.appendChild(actionCell);
+
+table.appendChild(row);
+
+});
+
+}
+
+
+// SAVE FERTILIZER
+
+form.addEventListener("submit",async function(event){
+
+event.preventDefault();
+
+const user=await getUser();
+
+if(!user)return;
+
+const record={
+
+user_id:user.id,
+
+fertilizer_name:
+document.getElementById("fertilizerName").value.trim(),
+
+fertilizer_type:
+document.getElementById("fertilizerType").value,
+
+quantity:
+Number(document.getElementById("quantity").value),
+
+application_date:
+document.getElementById("applicationDate").value,
+
+crop_name:
+document.getElementById("cropName").value.trim(),
+
+notes:
+document.getElementById("notes").value.trim()
+
+};
+
+message.style.color="#2e7d32";
+message.textContent=t("saving");
+
+const {error}=await supabaseClient
+.from("fertilizer_records")
+.insert([record]);
+
+if(error){
+
+message.style.color="red";
+message.textContent=t("error")+error.message;
+
+return;
+}
+
+message.style.color="green";
+message.textContent=t("saved");
+
+form.reset();
+
+loadFertilizers();
+
+});
+
+
+// DELETE FERTILIZER
+
+async function deleteFertilizer(id){
+
+if(!confirm(t("confirmDelete")))return;
+
+const user=await getUser();
+
+if(!user)return;
+
+const {error}=await supabaseClient
+.from("fertilizer_records")
+.delete()
+.eq("id",id)
+.eq("user_id",user.id);
+
+if(error){
+
+alert(t("error")+error.message);
+return;
+}
+
+alert(t("deleted"));
+
+loadFertilizers();
+
+}
+
+
+// START
+
+applyLanguage();
+
+</script>
+
+</body>
+</html>

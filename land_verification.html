@@ -1,0 +1,269 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Land Ownership Verification</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f1f7f2;
+    color: #26352b;
+}
+
+header {
+    background: linear-gradient(120deg, #064e32, #2e8b57);
+    color: white;
+    padding: 25px 6%;
+}
+
+header h1 {
+    margin-bottom: 8px;
+}
+
+.container {
+    max-width: 900px;
+    margin: 35px auto;
+    padding: 0 18px;
+}
+
+.card {
+    background: white;
+    padding: 30px;
+    border-radius: 14px;
+    box-shadow: 0 4px 18px #00000012;
+}
+
+.card h2 {
+    color: #176b3b;
+    margin-bottom: 22px;
+}
+
+.note {
+    background: #fff8df;
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 22px;
+    line-height: 1.5;
+    color: #705b20;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.field label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.field input {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #ccd8ce;
+    border-radius: 7px;
+    outline-color: #2e8b57;
+}
+
+button {
+    background: #198754;
+    color: white;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    margin-top: 25px;
+    font-size: 15px;
+}
+
+button:hover {
+    background: #126b40;
+}
+
+button:disabled {
+    background: #8ba997;
+    cursor: not-allowed;
+}
+
+#message {
+    margin-top: 18px;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.success {
+    color: #198754;
+}
+
+.error {
+    color: #dc3545;
+}
+
+@media(max-width: 650px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        padding: 20px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🌾 Land Ownership Verification</h1>
+    <p>Farm Management System</p>
+</header>
+
+<div class="container">
+<div class="card">
+
+<h2>Enter Land Details</h2>
+
+<div class="note">
+    Enter your land details for verification.
+    Submitted records will initially have Pending status.
+    Actual ownership confirmation requires authorized government records.
+</div>
+
+<form id="landForm">
+
+<div class="form-grid">
+
+    <div class="field">
+        <label>Farmer Name</label>
+        <input type="text" id="farmerName"
+        placeholder="Enter farmer name" required>
+    </div>
+
+    <div class="field">
+        <label>Survey Number</label>
+        <input type="text" id="surveyNumber"
+        placeholder="Enter survey number" required>
+    </div>
+
+    <div class="field">
+        <label>Village</label>
+        <input type="text" id="village"
+        placeholder="Enter village" required>
+    </div>
+
+    <div class="field">
+        <label>Taluk</label>
+        <input type="text" id="taluk"
+        placeholder="Enter taluk" required>
+    </div>
+
+    <div class="field">
+        <label>District</label>
+        <input type="text" id="district"
+        placeholder="Enter district" required>
+    </div>
+
+    <div class="field">
+        <label>Land Area (Acres)</label>
+        <input type="number" id="landArea"
+        placeholder="Enter land area"
+        min="0.01" step="0.01" required>
+    </div>
+
+</div>
+
+<button type="submit" id="submitBtn">
+    Submit Land Details
+</button>
+
+<p id="message"></p>
+
+</form>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
+
+<script>
+const form = document.getElementById("landForm");
+const message = document.getElementById("message");
+const submitBtn = document.getElementById("submitBtn");
+
+form.addEventListener("submit", async function(e) {
+
+    e.preventDefault();
+
+    message.textContent = "";
+    message.className = "";
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+
+    try {
+
+        const { data: { user }, error: authError } =
+            await supabaseClient.auth.getUser();
+
+        if (authError) {
+            throw authError;
+        }
+
+        if (!user) {
+            throw new Error("Please login first!");
+        }
+
+        const landData = {
+            user_id: user.id,
+            farmer_name: document.getElementById("farmerName").value.trim(),
+            survey_number: document.getElementById("surveyNumber").value.trim(),
+            village: document.getElementById("village").value.trim(),
+            taluk: document.getElementById("taluk").value.trim(),
+            district: document.getElementById("district").value.trim(),
+            land_area: Number(document.getElementById("landArea").value),
+            verification_status: "Pending"
+        };
+
+        const { error } = await supabaseClient
+            .from("land_verifications")
+            .insert([landData]);
+
+        if (error) {
+            throw error;
+        }
+
+        message.textContent =
+            "Land details submitted successfully! Status: Pending.";
+
+        message.className = "success";
+
+        form.reset();
+
+    } catch (error) {
+
+        message.textContent = "Error: " + error.message;
+        message.className = "error";
+
+    } finally {
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Land Details";
+
+    }
+
+});
+</script>
+
+</body>
+</html>

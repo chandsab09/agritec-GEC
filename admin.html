@@ -1,0 +1,1377 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farm Management - Admin Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f3f7f4;
+    color: #203328;
+}
+
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    position: fixed;
+    background: linear-gradient(180deg, #0b5134, #176b3a, #218653);
+    color: white;
+    padding: 25px 15px;
+    overflow-y: auto;
+    box-shadow: 5px 0 22px #0b51341a;
+}
+
+.sidebar h2 {
+    text-align: center;
+    margin-bottom: 35px;
+    font-size: 21px;
+}
+
+.sidebar a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    padding: 14px;
+    margin: 8px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.sidebar a:hover {
+    background: #0e512b;
+    transform: translateX(3px);
+}
+
+.main {
+    margin-left: 240px;
+    padding: 25px;
+    max-width: 1700px;
+}
+
+header {
+    background: linear-gradient(115deg, white, #f0f8f1);
+    padding: 28px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    border: 1px solid #e4eee6;
+    box-shadow: 0 5px 18px #0001;
+}
+
+header h1 {
+    color: #176b3a;
+    margin-bottom: 8px;
+    font-size: 27px;
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.summary-card {
+    background: white;
+    padding: 22px;
+    border-radius: 15px;
+    border: 1px solid #e5eee7;
+    box-shadow: 0 8px 24px #173b2510;
+    position: relative;
+    overflow: hidden;
+}
+
+.summary-card::after {
+    content: "";
+    position: absolute;
+    width: 6px;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: #2e8b57;
+}
+
+.summary-card h3 {
+    color: #5c7564;
+    margin-bottom: 12px;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.summary-card p {
+    font-size: 32px;
+    font-weight: bold;
+    color: #145c38;
+}
+
+.section {
+    background: white;
+    padding: 22px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    border: 1px solid #e5eee7;
+    box-shadow: 0 8px 24px #173b2510;
+}
+
+.section h2 {
+    color: #176b3a;
+    margin-bottom: 18px;
+    font-size: 21px;
+}
+
+.farmer-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin: 18px 0;
+}
+
+.farmer-search {
+    flex: 1;
+    min-width: 230px;
+    max-width: 420px;
+    padding: 12px 15px;
+    margin: 0;
+    border: 1px solid #d7e5da;
+    border-radius: 10px;
+    outline: none;
+    background: #fbfdfb;
+}
+
+.farmer-search:focus {
+    border-color: #278653;
+    box-shadow: 0 0 0 3px #27865318;
+}
+
+.farmer-count-label {
+    color: #64766a;
+    font-size: 13px;
+}
+
+.table-container {
+    overflow-x: auto;
+    border: 1px solid #e1ebe3;
+    border-radius: 12px;
+    background: white;
+}
+
+#farmerTable {
+    width: 100%;
+    min-width: 850px;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+}
+
+#farmerTable th {
+    background: #edf6ef;
+    color: #245b39;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .45px;
+    padding: 15px 14px;
+    border-bottom: 1px solid #dce9df;
+    white-space: nowrap;
+    text-align: left;
+}
+
+#farmerTable td {
+    padding: 15px 14px;
+    border-bottom: 1px solid #edf1ed;
+    color: #405348;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+#farmerTable tbody tr:hover {
+    background: #f8fcf8;
+}
+
+.farmer-name-cell {
+    font-weight: bold;
+    color: #185d39 !important;
+}
+
+.farmer-subtext {
+    display: block;
+    color: #87958b;
+    font-size: 12px;
+    margin-top: 4px;
+    font-weight: normal;
+}
+
+.farmer-badge {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 20px;
+    background: #e9f6ed;
+    color: #216b40;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.view-details-btn {
+    background: #e8f3eb;
+    color: #176b3a;
+    border: 1px solid #d2e6d7;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 0;
+    font-weight: bold;
+}
+
+.view-details-btn:hover {
+    background: #d8ecde;
+}
+
+.farmer-expanded-row td {
+    background: #f8fbf8;
+    padding: 18px;
+}
+
+.farmer-expanded-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.farmer-detail-panel {
+    border: 1px solid #e1ebe3;
+    background: white;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.farmer-detail-panel h3 {
+    color: #176b3a;
+    font-size: 14px;
+    margin-bottom: 9px;
+}
+
+.farmer-detail-panel .detail-item {
+    font-size: 13px;
+    line-height: 1.65;
+    border-bottom: 1px solid #eee;
+    padding: 9px 0;
+}
+
+.empty-table {
+    text-align: center;
+    color: #77877b;
+    padding: 28px !important;
+}
+
+.empty {
+    color: #777;
+    font-size: 14px;
+}
+
+input, textarea {
+    padding: 11px;
+    margin: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+button {
+    padding: 10px 15px;
+    background: #176b3a;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 5px;
+}
+
+button:hover {
+    background: #0e512b;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.delete-btn {
+    background: #c0392b;
+}
+
+.delete-btn:hover {
+    background: #922b21;
+}
+
+.edit-btn {
+    background: #2874a6;
+}
+
+#prices .table-container {
+    overflow-x: auto;
+    border: 1px solid #e1ebe3;
+    border-radius: 10px;
+}
+
+#prices table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0;
+    min-width: 650px;
+}
+
+#prices th, #prices td {
+    padding: 13px;
+    border-bottom: 1px solid #e8eee9;
+    text-align: left;
+}
+
+#prices th {
+    background: #edf6ef;
+    color: #245b39;
+}
+
+#message {
+    margin-bottom: 15px;
+    color: #c0392b;
+}
+
+#marketForm {
+    margin-bottom: 15px;
+}
+
+#marketForm input {
+    margin-bottom: 10px;
+}
+
+.cancel-btn {
+    background: #777;
+}
+
+.announcement-card {
+    border: 1px solid #d6e5d9;
+    border-left: 5px solid #176b3a;
+    border-radius: 8px;
+    padding: 18px;
+    margin: 15px 0;
+    background: #fafffa;
+}
+
+.announcement-card h3 {
+    color: #176b3a;
+    margin-bottom: 10px;
+}
+
+.announcement-card p {
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin-bottom: 12px;
+}
+
+.announcement-card small {
+    color: #777;
+}
+
+#announcementForm input,
+#announcementForm textarea {
+    width: 95%;
+    display: block;
+    margin: 10px 0;
+}
+
+@media(max-width: 700px) {
+    .farmer-toolbar {
+        align-items: stretch;
+    }
+
+    .farmer-search {
+        max-width: none;
+        width: 100%;
+    }
+
+    header h1 {
+        font-size: 21px;
+    }
+
+    .sidebar {
+        width: 160px;
+        padding: 15px 8px;
+    }
+
+    .main {
+        margin-left: 160px;
+        padding: 12px;
+    }
+
+    .sidebar h2 {
+        font-size: 17px;
+    }
+
+    .sidebar a {
+        font-size: 13px;
+        padding: 10px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h2>🌱 Admin Panel</h2>
+
+    <a href="#dashboard">🏠 Dashboard</a>
+    <a href="#farmers">👨‍🌾 Farmer Details</a>
+    <a href="#prices">💰 Market Prices</a>
+    <a href="#announcements">📢 Announcements</a>
+    <a onclick="logout()">🚪 Logout</a>
+</div>
+
+<div class="main">
+
+<header id="dashboard">
+    <h1>🌾 Farm Management System</h1>
+    <p>Admin Dashboard - Farmer Wise Details</p>
+</header>
+
+<div id="message"></div>
+
+<div class="summary">
+
+    <div class="summary-card">
+        <h3>Total Farmers</h3>
+        <p id="farmerCount">0</p>
+    </div>
+
+    <div class="summary-card">
+        <h3>Total Crops</h3>
+        <p id="cropCount">0</p>
+    </div>
+
+    <div class="summary-card">
+        <h3>Total Livestock</h3>
+        <p id="livestockCount">0</p>
+    </div>
+
+    <div class="summary-card">
+        <h3>Total Expenses</h3>
+        <p id="expenseCount">0</p>
+    </div>
+
+</div>
+
+<!-- FARMER DETAILS -->
+
+<div class="section" id="farmers">
+
+    <h2>👨‍🌾 Farmer Management</h2>
+
+    <p style="color:#718176; margin-top:-8px; line-height:1.6;">
+        View registered farmers and expand each row to see their crops, land, livestock and expenses.
+    </p>
+
+    <div class="farmer-toolbar">
+
+        <input
+            type="search"
+            id="farmerSearch"
+            class="farmer-search"
+            placeholder="🔍 Search by farmer name, phone or address..."
+            oninput="filterFarmerRows()"
+        >
+
+        <span class="farmer-count-label" id="farmerTableCount">
+            Loading farmers...
+        </span>
+
+    </div>
+
+    <div class="table-container">
+
+        <table id="farmerTable">
+
+            <thead>
+                <tr>
+                    <th>Farmer</th>
+                    <th>Phone Number</th>
+                    <th>Address</th>
+                    <th>Crops</th>
+                    <th>Land Records</th>
+                    <th>Livestock</th>
+                    <th>Expenses</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+
+            <tbody id="farmerDetails">
+                <tr>
+                    <td colspan="8" class="empty-table">
+                        Loading farmer details...
+                    </td>
+                </tr>
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<!-- ANNOUNCEMENTS -->
+
+<div class="section" id="announcements">
+
+    <h2>📢 Announcement Management</h2>
+
+    <form id="announcementForm">
+
+        <input
+            type="text"
+            id="announcementTitle"
+            placeholder="Announcement Title"
+            maxlength="150"
+            required
+        >
+
+        <textarea
+            id="announcementMessage"
+            placeholder="Enter announcement message"
+            rows="4"
+            maxlength="3000"
+            required
+        ></textarea>
+
+        <button type="submit" id="postAnnouncementBtn">
+            Post Announcement
+        </button>
+
+    </form>
+
+    <h3 style="margin-top:20px; color:#176b3a;">
+        Posted Announcements
+    </h3>
+
+    <div id="announcementList">
+        Loading announcements...
+    </div>
+
+</div>
+
+<!-- MARKET PRICE MANAGEMENT -->
+
+<div class="section" id="prices">
+
+    <h2>💰 Market Price Management</h2>
+
+    <form id="marketForm">
+
+        <input
+            type="text"
+            id="cropName"
+            placeholder="Crop Name"
+            required
+        >
+
+        <input
+            type="number"
+            id="cropPrice"
+            placeholder="Price per Quintal"
+            min="0.01"
+            step="0.01"
+            required
+        >
+
+        <input
+            type="text"
+            id="cropCity"
+            placeholder="City / Market Name"
+            required
+        >
+
+        <input
+            type="date"
+            id="priceDate"
+            required
+        >
+
+        <button type="submit" id="savePriceBtn">
+            Add Market Price
+        </button>
+
+        <button
+            type="button"
+            class="cancel-btn"
+            id="cancelEditBtn"
+            onclick="cancelEdit()"
+            style="display:none;"
+        >
+            Cancel
+        </button>
+
+    </form>
+
+    <div class="table-container">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Crop Name</th>
+                    <th>Price / Quintal</th>
+                    <th>City</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody id="pricesTable">
+                <tr>
+                    <td colspan="5">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+</div>
+
+</div>
+
+<script>
+
+const message = document.getElementById("message");
+
+let editingPriceId = null;
+
+
+// CHECK ADMIN LOGIN
+
+async function checkAdmin() {
+
+    const { data: { user }, error } =
+        await supabaseClient.auth.getUser();
+
+    if (error || !user) {
+        window.location.href = "login.html";
+        return false;
+    }
+
+    const { data: roleData, error: roleError } =
+        await supabaseClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (roleError) {
+        message.textContent = roleError.message;
+        return false;
+    }
+
+    if (!roleData || roleData.role !== "admin") {
+        message.textContent = "Admin access required.";
+        return false;
+    }
+
+    return true;
+}
+
+
+// SAFE TEXT
+
+function safe(value) {
+    const div = document.createElement("div");
+    div.textContent = value ?? "";
+    return div.innerHTML;
+}
+
+
+// LOAD FARMER DATA
+
+async function loadFarmerDetails() {
+
+    const container = document.getElementById("farmerDetails");
+    const countLabel = document.getElementById("farmerTableCount");
+
+    container.innerHTML =
+        `<tr><td colspan="8" class="empty-table">Loading farmer details...</td></tr>`;
+
+    const results = await Promise.all([
+
+        supabaseClient.from("farmers").select("*")
+            .order("created_at", { ascending: false }),
+
+        supabaseClient.from("crops").select("*"),
+
+        supabaseClient.from("lands").select("*"),
+
+        supabaseClient.from("livestock").select("*"),
+
+        supabaseClient.from("expenses").select("*")
+
+    ]);
+
+    const tables = results.map(result => result.data || []);
+
+    const errors = results
+        .map(result => result.error)
+        .filter(error => error);
+
+    if (errors.length > 0) {
+        container.innerHTML =
+            `<tr><td colspan="8" class="empty-table">Unable to load farmer details: ${safe(errors.map(error => error.message).join(" | "))}</td></tr>`;
+
+        countLabel.textContent = "Could not load farmers";
+        return;
+    }
+
+    const [farmers, crops, lands, livestock, expenses] = tables;
+
+    document.getElementById("farmerCount").textContent = farmers.length;
+    document.getElementById("cropCount").textContent = crops.length;
+    document.getElementById("livestockCount").textContent = livestock.length;
+    document.getElementById("expenseCount").textContent = expenses.length;
+
+    countLabel.textContent = farmers.length + " farmer(s) registered";
+
+    if (farmers.length === 0) {
+        container.innerHTML =
+            `<tr><td colspan="8" class="empty-table">No farmers registered yet.</td></tr>`;
+        return;
+    }
+
+    container.innerHTML = "";
+
+    farmers.forEach((farmer, index) => {
+
+        const farmerCrops = crops.filter(item => item.user_id === farmer.user_id);
+        const farmerLands = lands.filter(item => item.user_id === farmer.user_id);
+        const farmerLivestock = livestock.filter(item => item.user_id === farmer.user_id);
+        const farmerExpenses = expenses.filter(item => item.user_id === farmer.user_id);
+
+        const row = document.createElement("tr");
+        row.className = "farmer-main-row";
+
+        row.dataset.search = [
+            farmer.farmer_name,
+            farmer.phone,
+            farmer.address
+        ].join(" ").toLowerCase();
+
+        const nameCell = document.createElement("td");
+        nameCell.className = "farmer-name-cell";
+        nameCell.textContent = farmer.farmer_name || "Unnamed Farmer";
+
+        const nameSub = document.createElement("span");
+        nameSub.className = "farmer-subtext";
+        nameSub.textContent = "Farmer #" + (index + 1);
+        nameCell.appendChild(nameSub);
+
+        const phoneCell = document.createElement("td");
+        phoneCell.textContent = farmer.phone || "—";
+
+        const addressCell = document.createElement("td");
+        addressCell.textContent = farmer.address || "—";
+
+        const cropCell = document.createElement("td");
+        cropCell.innerHTML = `<span class="farmer-badge">${farmerCrops.length} crop(s)</span>`;
+
+        const landCell = document.createElement("td");
+        landCell.innerHTML = `<span class="farmer-badge">${farmerLands.length} record(s)</span>`;
+
+        const livestockCell = document.createElement("td");
+        livestockCell.innerHTML = `<span class="farmer-badge">${farmerLivestock.length} record(s)</span>`;
+
+        const expenseCell = document.createElement("td");
+        expenseCell.innerHTML = `<span class="farmer-badge">${farmerExpenses.length} record(s)</span>`;
+
+        const actionCell = document.createElement("td");
+
+        const viewButton = document.createElement("button");
+        viewButton.type = "button";
+        viewButton.className = "view-details-btn";
+        viewButton.textContent = "View details";
+
+        actionCell.appendChild(viewButton);
+
+        row.append(
+            nameCell, phoneCell, addressCell,
+            cropCell, landCell, livestockCell,
+            expenseCell, actionCell
+        );
+
+        const detailRow = document.createElement("tr");
+        detailRow.className = "farmer-expanded-row";
+        detailRow.style.display = "none";
+
+        const detailCell = document.createElement("td");
+        detailCell.colSpan = 8;
+
+        const detailContent = document.createElement("div");
+        detailContent.className = "farmer-expanded-content";
+
+        function addPanel(title, records, renderRecord, emptyText) {
+
+            const panel = document.createElement("div");
+            panel.className = "farmer-detail-panel";
+
+            const heading = document.createElement("h3");
+            heading.textContent = title;
+            panel.appendChild(heading);
+
+            if (records.length) {
+
+                records.forEach(record => {
+
+                    const item = document.createElement("div");
+                    item.className = "detail-item";
+                    item.innerHTML = renderRecord(record);
+                    panel.appendChild(item);
+
+                });
+
+            } else {
+
+                const empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = emptyText;
+                panel.appendChild(empty);
+
+            }
+
+            detailContent.appendChild(panel);
+        }
+
+        // CROPS
+
+        addPanel("🌱 Crops Details", farmerCrops, crop => `
+            <strong>Crop:</strong> ${safe(crop.crop_name)}<br>
+            <strong>Type:</strong> ${safe(crop.crop_type)}<br>
+            <strong>Area:</strong> ${safe(crop.area)} Acres<br>
+            <strong>Sowing:</strong> ${safe(crop.sowing_date)}<br>
+            <strong>Harvest:</strong> ${safe(crop.harvest_date)}
+        `, "No crops added");
+
+        // LAND
+
+        addPanel("🌍 Land Details", farmerLands, land => `
+            <strong>Location:</strong> ${safe(land.location)}<br>
+            <strong>Area:</strong> ${safe(land.area)} Acres<br>
+            <strong>Soil:</strong> ${safe(land.soil_type)}
+        `, "No land details added");
+
+        // LIVESTOCK
+
+        addPanel("🐄 Livestock Details", farmerLivestock, animal => `
+            <strong>Animal:</strong> ${safe(animal.animal_name)}<br>
+            <strong>Type:</strong> ${safe(animal.animal_type)}<br>
+            <strong>Number:</strong> ${safe(animal.quantity)}<br>
+            <strong>Age:</strong> ${safe(animal.age)}<br>
+            <strong>Breed:</strong> ${safe(animal.breed)}
+        `, "No livestock added");
+
+        // EXPENSES
+
+        addPanel("💰 Expenses", farmerExpenses, expense => `
+            <strong>Expense:</strong> ${safe(expense.expense_name)}<br>
+            <strong>Category:</strong> ${safe(expense.category)}<br>
+            <strong>Amount:</strong> ₹${safe(expense.amount)}<br>
+            <strong>Date:</strong> ${safe(expense.expense_date)}
+        `, "No expenses added");
+
+        detailCell.appendChild(detailContent);
+        detailRow.appendChild(detailCell);
+
+        viewButton.addEventListener("click", () => {
+
+            const isOpen = detailRow.style.display !== "none";
+
+            detailRow.style.display = isOpen ? "none" : "table-row";
+
+            viewButton.textContent =
+                isOpen ? "View details" : "Hide details";
+
+        });
+
+        container.appendChild(row);
+        container.appendChild(detailRow);
+
+    });
+
+    filterFarmerRows();
+
+}
+
+
+// SEARCH FARMERS
+
+function filterFarmerRows() {
+
+    const searchValue = document
+        .getElementById("farmerSearch")
+        .value.trim().toLowerCase();
+
+    const rows = document.querySelectorAll(
+        "#farmerDetails .farmer-main-row"
+    );
+
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+
+        const detailRow = row.nextElementSibling;
+        const matches = row.dataset.search.includes(searchValue);
+
+        row.style.display = matches ? "" : "none";
+
+        if (!matches && detailRow) {
+            detailRow.style.display = "none";
+
+            const button = row.querySelector(".view-details-btn");
+
+            if (button) button.textContent = "View details";
+        }
+
+        if (matches) visibleCount++;
+
+    });
+
+    document.getElementById("farmerTableCount").textContent =
+        visibleCount + " of " + rows.length + " farmer(s) shown";
+
+}
+
+
+// ANNOUNCEMENT FORM
+
+document.getElementById("announcementForm")
+.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const title = document.getElementById("announcementTitle").value.trim();
+
+    const announcementMessage = document
+        .getElementById("announcementMessage").value.trim();
+
+    const postButton = document.getElementById("postAnnouncementBtn");
+
+    if (!title || !announcementMessage) {
+        alert("Please enter title and message.");
+        return;
+    }
+
+    postButton.disabled = true;
+    postButton.textContent = "Posting...";
+
+    try {
+
+        const { data: { user }, error: userError } =
+            await supabaseClient.auth.getUser();
+
+        if (userError || !user) {
+            alert("Please login again.");
+            return;
+        }
+
+        const { error } = await supabaseClient
+            .from("announcements")
+            .insert([{
+                title: title,
+                message: announcementMessage,
+                user_id: user.id
+            }]);
+
+        if (error) {
+            alert("Announcement failed: " + error.message);
+            return;
+        }
+
+        alert("Announcement posted successfully!");
+
+        document.getElementById("announcementForm").reset();
+
+        await loadAnnouncements();
+
+    } finally {
+
+        postButton.disabled = false;
+        postButton.textContent = "Post Announcement";
+
+    }
+
+});
+
+
+// LOAD ANNOUNCEMENTS
+
+async function loadAnnouncements() {
+
+    const container = document.getElementById("announcementList");
+
+    container.textContent = "Loading announcements...";
+
+    const { data, error } = await supabaseClient
+        .from("announcements")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        container.textContent =
+            "Unable to load announcements: " + error.message;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        container.textContent = "No announcements posted yet.";
+        return;
+    }
+
+    container.innerHTML = "";
+
+    data.forEach(item => {
+
+        const card = document.createElement("div");
+        card.className = "announcement-card";
+
+        const heading = document.createElement("h3");
+        heading.textContent = "📢 " + item.title;
+
+        const content = document.createElement("p");
+        content.textContent = item.message;
+
+        const date = document.createElement("small");
+        date.textContent =
+            "Posted: " + new Date(item.created_at).toLocaleString();
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete";
+        deleteButton.className = "delete-btn";
+
+        deleteButton.onclick = () => deleteAnnouncement(item.id);
+
+        card.appendChild(heading);
+        card.appendChild(content);
+        card.appendChild(date);
+        card.appendChild(document.createElement("br"));
+        card.appendChild(deleteButton);
+
+        container.appendChild(card);
+
+    });
+
+}
+
+
+// DELETE ANNOUNCEMENT
+
+async function deleteAnnouncement(id) {
+
+    if (!confirm("Are you sure you want to delete this announcement?")) {
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("announcements")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        alert("Delete failed: " + error.message);
+        return;
+    }
+
+    alert("Announcement deleted successfully!");
+
+    await loadAnnouncements();
+
+}
+
+
+// MARKET PRICE FORM
+
+document.getElementById("marketForm")
+.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const cropName = document.getElementById("cropName").value.trim();
+
+    const cropPrice = Number(document.getElementById("cropPrice").value);
+
+    const cropCity = document.getElementById("cropCity").value.trim();
+
+    const priceDate = document.getElementById("priceDate").value;
+
+    if (!cropName || !cropCity || !priceDate ||
+        !Number.isFinite(cropPrice) || cropPrice <= 0) {
+
+        alert("Please enter all valid crop details.");
+        return;
+    }
+
+    if (editingPriceId) {
+
+        const success = await updateMarketPrice(
+            editingPriceId,
+            cropName,
+            cropPrice,
+            cropCity,
+            priceDate
+        );
+
+        if (!success) return;
+
+    } else {
+
+        const { data: { user }, error: userError } =
+            await supabaseClient.auth.getUser();
+
+        if (userError || !user) {
+            alert("Please login again.");
+            return;
+        }
+
+        const { error } = await supabaseClient
+            .from("market_prices")
+            .insert([{
+                crop_name: cropName,
+                price_per_quintal: cropPrice,
+                city: cropCity,
+                price_date: priceDate,
+                user_id: user.id
+            }]);
+
+        if (error) {
+            alert("Error: " + error.message);
+            return;
+        }
+
+        alert("Market price added successfully!");
+
+    }
+
+    cancelEdit();
+
+    await loadPrices();
+
+});
+
+
+// LOAD MARKET PRICES
+
+async function loadPrices() {
+
+    const tbody = document.getElementById("pricesTable");
+
+    const { data, error } = await supabaseClient
+        .from("market_prices")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        tbody.innerHTML =
+            `<tr><td colspan="5">Error: ${safe(error.message)}</td></tr>`;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML =
+            `<tr><td colspan="5">No market prices added yet</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    data.forEach(price => {
+
+        const row = document.createElement("tr");
+
+        const cropCell = document.createElement("td");
+        cropCell.textContent = price.crop_name ?? "";
+
+        const amountCell = document.createElement("td");
+        amountCell.textContent =
+            "₹" + Number(price.price_per_quintal || 0).toLocaleString("en-IN");
+
+        const cityCell = document.createElement("td");
+        cityCell.textContent = price.city || "—";
+
+        const dateCell = document.createElement("td");
+        dateCell.textContent = price.price_date ?? "";
+
+        const actionCell = document.createElement("td");
+
+        const editButton = document.createElement("button");
+        editButton.textContent = "Update";
+        editButton.className = "edit-btn";
+        editButton.onclick = () => editPrice(price);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete";
+        deleteButton.className = "delete-btn";
+        deleteButton.onclick = () => deletePrice(price.id);
+
+        actionCell.appendChild(editButton);
+        actionCell.appendChild(deleteButton);
+
+        row.appendChild(cropCell);
+        row.appendChild(amountCell);
+        row.appendChild(cityCell);
+        row.appendChild(dateCell);
+        row.appendChild(actionCell);
+
+        tbody.appendChild(row);
+
+    });
+
+}
+
+
+// EDIT PRICE
+
+function editPrice(price) {
+
+    editingPriceId = price.id;
+
+    document.getElementById("cropName").value =
+        price.crop_name ?? "";
+
+    document.getElementById("cropPrice").value =
+        price.price_per_quintal ?? "";
+
+    document.getElementById("cropCity").value =
+        price.city ?? "";
+
+    document.getElementById("priceDate").value =
+        price.price_date ?? "";
+
+    document.getElementById("savePriceBtn").textContent =
+        "Save Update";
+
+    document.getElementById("cancelEditBtn").style.display =
+        "inline-block";
+
+    document.getElementById("prices").scrollIntoView({
+        behavior: "smooth"
+    });
+
+}
+
+
+// UPDATE PRICE
+
+async function updateMarketPrice(id, name, amount, city, date) {
+
+    const { error } = await supabaseClient
+        .from("market_prices")
+        .update({
+            crop_name: name,
+            price_per_quintal: amount,
+            city: city,
+            price_date: date
+        })
+        .eq("id", id);
+
+    if (error) {
+        alert("Update failed: " + error.message);
+        return false;
+    }
+
+    alert("Market price updated successfully!");
+
+    return true;
+
+}
+
+
+// CANCEL EDIT
+
+function cancelEdit() {
+
+    editingPriceId = null;
+
+    document.getElementById("marketForm").reset();
+
+    document.getElementById("savePriceBtn").textContent =
+        "Add Market Price";
+
+    document.getElementById("cancelEditBtn").style.display =
+        "none";
+
+}
+
+
+// DELETE PRICE
+
+async function deletePrice(id) {
+
+    if (!confirm("Are you sure you want to delete this price?")) {
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("market_prices")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        alert("Delete failed: " + error.message);
+        return;
+    }
+
+    alert("Market price deleted successfully!");
+
+    await loadPrices();
+
+}
+
+
+// LOGOUT
+
+async function logout() {
+
+    await supabaseClient.auth.signOut();
+
+    window.location.href = "login.html";
+
+}
+
+
+// START DASHBOARD
+
+async function startAdminDashboard() {
+
+    if (typeof supabaseClient === "undefined") {
+        message.textContent =
+            "Supabase connection not loaded. Check supabase.js.";
+        return;
+    }
+
+    const allowed = await checkAdmin();
+
+    if (!allowed) return;
+
+    await loadFarmerDetails();
+    await loadPrices();
+    await loadAnnouncements();
+
+}
+
+startAdminDashboard();
+
+</script>
+
+</body>
+</html>

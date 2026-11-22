@@ -1,0 +1,901 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crop Recommendation</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 30px 15px;
+    background: #f1f8e9;
+}
+
+.container {
+    max-width: 650px;
+    margin: auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px #0002;
+}
+
+.language-box {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 15px;
+}
+
+.language-box select {
+    width: auto;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+h1 {
+    text-align: center;
+    color: #2e7d32;
+}
+
+p {
+    text-align: center;
+    color: #555;
+}
+
+label {
+    display: block;
+    margin-top: 18px;
+    font-weight: bold;
+}
+
+select, input {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+button {
+    width: 100%;
+    padding: 13px;
+    margin-top: 25px;
+    background: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1b5e20;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#result {
+    margin-top: 25px;
+    padding: 18px;
+    background: #e8f5e9;
+    border-radius: 8px;
+    display: none;
+}
+
+.crop {
+    background: white;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 6px;
+    border-left: 4px solid #2e7d32;
+}
+
+.history-item {
+    background: #f1f8e9;
+    padding: 14px;
+    margin-top: 12px;
+    border-radius: 8px;
+    border-left: 4px solid #2e7d32;
+}
+
+.status {
+    text-align: center;
+    margin-top: 12px;
+    font-weight: bold;
+}
+
+@media(max-width:600px) {
+    .container {
+        padding: 18px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="language-box">
+        <select id="languageSelect">
+            <option value="en">English</option>
+            <option value="kn">ಕನ್ನಡ</option>
+            <option value="hi">हिन्दी</option>
+            <option value="te">తెలుగు</option>
+            <option value="ta">தமிழ்</option>
+        </select>
+    </div>
+
+    <h1 id="pageTitle">🌱 Crop Recommendation</h1>
+
+    <p id="subtitle">
+        Find suitable crops based on your farm conditions.
+    </p>
+
+    <label id="soilLabel">Soil Type</label>
+
+    <select id="soil">
+        <option value="" id="soilDefault">Select Soil Type</option>
+        <option value="black" id="blackOption">Black Soil</option>
+        <option value="red" id="redOption">Red Soil</option>
+        <option value="loamy" id="loamyOption">Loamy Soil</option>
+        <option value="sandy" id="sandyOption">Sandy Soil</option>
+        <option value="alluvial" id="alluvialOption">Alluvial Soil</option>
+    </select>
+
+    <label id="areaLabel">Land Area (in acres)</label>
+
+    <input type="number" id="area"
+           placeholder="Enter land area"
+           min="0.1" step="0.1">
+
+    <label id="seasonLabel">Season</label>
+
+    <select id="season">
+        <option value="" id="seasonDefault">Select Season</option>
+        <option value="kharif" id="kharifOption">Kharif (Monsoon)</option>
+        <option value="rabi" id="rabiOption">Rabi (Winter)</option>
+        <option value="summer" id="summerOption">Summer</option>
+    </select>
+
+    <label id="waterLabel">Water Availability</label>
+
+    <select id="water">
+        <option value="" id="waterDefault">Select Water Availability</option>
+        <option value="high" id="highOption">High</option>
+        <option value="medium" id="mediumOption">Medium</option>
+        <option value="low" id="lowOption">Low</option>
+    </select>
+
+    <button id="recommendBtn" onclick="recommendCrops()">
+        Get Crop Recommendation
+    </button>
+
+    <p id="status" class="status"></p>
+
+    <div id="result"></div>
+
+    <hr style="margin-top:30px;">
+
+    <h2 id="historyTitle" style="color:#2e7d32;">
+        📋 Recommendation History
+    </h2>
+
+    <div id="history">Loading history...</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
+
+<script>
+
+const result = document.getElementById("result");
+const statusBox = document.getElementById("status");
+const historyBox = document.getElementById("history");
+const languageSelect = document.getElementById("languageSelect");
+const recommendBtn = document.getElementById("recommendBtn");
+
+let currentLanguage =
+    localStorage.getItem("agritec_dashboard_language") || "en";
+
+let lastRecommendation = null;
+
+
+// TRANSLATIONS
+
+const translations = {
+
+en: {
+    title: "🌱 Crop Recommendation",
+    subtitle: "Find suitable crops based on your farm conditions.",
+    soil: "Soil Type",
+    soilDefault: "Select Soil Type",
+    black: "Black Soil",
+    red: "Red Soil",
+    loamy: "Loamy Soil",
+    sandy: "Sandy Soil",
+    alluvial: "Alluvial Soil",
+    area: "Land Area (in acres)",
+    areaPlaceholder: "Enter land area",
+    season: "Season",
+    seasonDefault: "Select Season",
+    kharif: "Kharif (Monsoon)",
+    rabi: "Rabi (Winter)",
+    summer: "Summer",
+    water: "Water Availability",
+    waterDefault: "Select Water Availability",
+    high: "High",
+    medium: "Medium",
+    low: "Low",
+    button: "Get Crop Recommendation",
+    historyTitle: "📋 Recommendation History",
+    loadingHistory: "Loading history...",
+    fill: "Please fill all the details correctly.",
+    recommended: "Recommended Crops",
+    landArea: "Land Area",
+    selectedSeason: "Selected Season",
+    acres: "acres",
+    noMatch: "No clear match found. Please consult a local agriculture expert.",
+    note: "These are general suggestions, not guaranteed recommendations. Check local rainfall, soil condition and agricultural advice before planting.",
+    saving: "Saving recommendation...",
+    saved: "Recommendation saved successfully!",
+    saveError: "Could not save: ",
+    noHistory: "No recommendation history available.",
+    historyError: "Unable to load history: ",
+    date: "Date",
+    areaText: "Area",
+    seasonText: "Season",
+    waterText: "Water",
+    cropsText: "Recommended",
+    login: "Please login first!",
+    cropNames: {
+        "Cotton": "Cotton",
+        "Sorghum (Jowar)": "Sorghum (Jowar)",
+        "Pigeon Pea (Tur)": "Pigeon Pea (Tur)",
+        "Groundnut": "Groundnut",
+        "Ragi": "Ragi",
+        "Maize": "Maize",
+        "Wheat": "Wheat",
+        "Vegetables": "Vegetables",
+        "Millets": "Millets",
+        "Watermelon": "Watermelon",
+        "Rice": "Rice",
+        "Sugarcane": "Sugarcane"
+    }
+},
+
+kn: {
+    title: "🌱 ಬೆಳೆ ಶಿಫಾರಸು",
+    subtitle: "ನಿಮ್ಮ ಕೃಷಿ ಪರಿಸ್ಥಿತಿಗೆ ಸೂಕ್ತವಾದ ಬೆಳೆಗಳನ್ನು ಕಂಡುಹಿಡಿಯಿರಿ.",
+    soil: "ಮಣ್ಣಿನ ವಿಧ",
+    soilDefault: "ಮಣ್ಣಿನ ವಿಧ ಆಯ್ಕೆಮಾಡಿ",
+    black: "ಕಪ್ಪು ಮಣ್ಣು",
+    red: "ಕೆಂಪು ಮಣ್ಣು",
+    loamy: "ಲೋಮಿ ಮಣ್ಣು",
+    sandy: "ಮರಳು ಮಣ್ಣು",
+    alluvial: "ಅಲ್ಯೂವಿಯಲ್ ಮಣ್ಣು",
+    area: "ಭೂಮಿಯ ವಿಸ್ತೀರ್ಣ (ಎಕರೆಗಳಲ್ಲಿ)",
+    areaPlaceholder: "ಭೂಮಿಯ ವಿಸ್ತೀರ್ಣ ನಮೂದಿಸಿ",
+    season: "ಋತು",
+    seasonDefault: "ಋತು ಆಯ್ಕೆಮಾಡಿ",
+    kharif: "ಮುಂಗಾರು",
+    rabi: "ಹಿಂಗಾರು",
+    summer: "ಬೇಸಿಗೆ",
+    water: "ನೀರಿನ ಲಭ್ಯತೆ",
+    waterDefault: "ನೀರಿನ ಲಭ್ಯತೆ ಆಯ್ಕೆಮಾಡಿ",
+    high: "ಹೆಚ್ಚು",
+    medium: "ಮಧ್ಯಮ",
+    low: "ಕಡಿಮೆ",
+    button: "ಬೆಳೆ ಶಿಫಾರಸು ಪಡೆಯಿರಿ",
+    historyTitle: "📋 ಶಿಫಾರಸು ಇತಿಹಾಸ",
+    loadingHistory: "ಇತಿಹಾಸ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    fill: "ದಯವಿಟ್ಟು ಎಲ್ಲಾ ವಿವರಗಳನ್ನು ಸರಿಯಾಗಿ ತುಂಬಿಸಿ.",
+    recommended: "ಶಿಫಾರಸು ಮಾಡಿದ ಬೆಳೆಗಳು",
+    landArea: "ಭೂಮಿಯ ವಿಸ್ತೀರ್ಣ",
+    selectedSeason: "ಆಯ್ಕೆ ಮಾಡಿದ ಋತು",
+    acres: "ಎಕರೆ",
+    noMatch: "ಸೂಕ್ತ ಬೆಳೆ ಕಂಡುಬಂದಿಲ್ಲ. ಸ್ಥಳೀಯ ಕೃಷಿ ತಜ್ಞರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
+    note: "ಇವು ಸಾಮಾನ್ಯ ಸಲಹೆಗಳು ಮಾತ್ರ; ಖಚಿತ ಶಿಫಾರಸುಗಳಲ್ಲ. ಬಿತ್ತನೆ ಮಾಡುವ ಮೊದಲು ಸ್ಥಳೀಯ ಮಳೆ, ಮಣ್ಣಿನ ಪರಿಸ್ಥಿತಿ ಮತ್ತು ಕೃಷಿ ತಜ್ಞರ ಸಲಹೆ ಪರಿಶೀಲಿಸಿ.",
+    saving: "ಶಿಫಾರಸು ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
+    saved: "ಶಿಫಾರಸು ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ!",
+    saveError: "ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: ",
+    noHistory: "ಯಾವುದೇ ಶಿಫಾರಸು ಇತಿಹಾಸ ಲಭ್ಯವಿಲ್ಲ.",
+    historyError: "ಇತಿಹಾಸ ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: ",
+    date: "ದಿನಾಂಕ",
+    areaText: "ವಿಸ್ತೀರ್ಣ",
+    seasonText: "ಋತು",
+    waterText: "ನೀರು",
+    cropsText: "ಶಿಫಾರಸು",
+    login: "ದಯವಿಟ್ಟು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ!",
+    cropNames: {
+        "Cotton": "ಹತ್ತಿ",
+        "Sorghum (Jowar)": "ಜೋಳ",
+        "Pigeon Pea (Tur)": "ತೊಗರಿ",
+        "Groundnut": "ಕಡಲೆಕಾಯಿ",
+        "Ragi": "ರಾಗಿ",
+        "Maize": "ಮೆಕ್ಕೆಜೋಳ",
+        "Wheat": "ಗೋಧಿ",
+        "Vegetables": "ತರಕಾರಿಗಳು",
+        "Millets": "ಸಿರಿಧಾನ್ಯಗಳು",
+        "Watermelon": "ಕಲ್ಲಂಗಡಿ",
+        "Rice": "ಭತ್ತ",
+        "Sugarcane": "ಕಬ್ಬು"
+    }
+},
+
+hi: {
+    title: "🌱 फसल सुझाव",
+    subtitle: "अपने खेत की परिस्थितियों के अनुसार उपयुक्त फसलें खोजें।",
+    soil: "मिट्टी का प्रकार",
+    soilDefault: "मिट्टी का प्रकार चुनें",
+    black: "काली मिट्टी",
+    red: "लाल मिट्टी",
+    loamy: "दोमट मिट्टी",
+    sandy: "रेतीली मिट्टी",
+    alluvial: "जलोढ़ मिट्टी",
+    area: "भूमि क्षेत्र (एकड़ में)",
+    areaPlaceholder: "भूमि क्षेत्र दर्ज करें",
+    season: "मौसम",
+    seasonDefault: "मौसम चुनें",
+    kharif: "खरीफ (मानसून)",
+    rabi: "रबी (सर्दी)",
+    summer: "गर्मी",
+    water: "पानी की उपलब्धता",
+    waterDefault: "पानी की उपलब्धता चुनें",
+    high: "अधिक",
+    medium: "मध्यम",
+    low: "कम",
+    button: "फसल सुझाव प्राप्त करें",
+    historyTitle: "📋 सुझाव इतिहास",
+    loadingHistory: "इतिहास लोड हो रहा है...",
+    fill: "कृपया सभी विवरण सही ढंग से भरें।",
+    recommended: "अनुशंसित फसलें",
+    landArea: "भूमि क्षेत्र",
+    selectedSeason: "चुना गया मौसम",
+    acres: "एकड़",
+    noMatch: "कोई उपयुक्त फसल नहीं मिली। स्थानीय कृषि विशेषज्ञ से सलाह लें।",
+    note: "ये सामान्य सुझाव हैं, गारंटी नहीं। बुवाई से पहले स्थानीय वर्षा, मिट्टी की स्थिति और कृषि सलाह की जाँच करें।",
+    saving: "सुझाव सेव हो रहा है...",
+    saved: "सुझाव सफलतापूर्वक सेव किया गया!",
+    saveError: "सेव नहीं हो सका: ",
+    noHistory: "कोई सुझाव इतिहास उपलब्ध नहीं है।",
+    historyError: "इतिहास लोड नहीं हो सका: ",
+    date: "तारीख",
+    areaText: "क्षेत्र",
+    seasonText: "मौसम",
+    waterText: "पानी",
+    cropsText: "सुझाव",
+    login: "कृपया पहले लॉगिन करें!",
+    cropNames: {
+        "Cotton": "कपास",
+        "Sorghum (Jowar)": "ज्वार",
+        "Pigeon Pea (Tur)": "अरहर",
+        "Groundnut": "मूंगफली",
+        "Ragi": "रागी",
+        "Maize": "मक्का",
+        "Wheat": "गेहूं",
+        "Vegetables": "सब्जियां",
+        "Millets": "मोटे अनाज",
+        "Watermelon": "तरबूज",
+        "Rice": "धान",
+        "Sugarcane": "गन्ना"
+    }
+},
+
+te: {
+    title: "🌱 పంట సిఫార్సు",
+    subtitle: "మీ వ్యవసాయ పరిస్థితులకు తగిన పంటలను కనుగొనండి.",
+    soil: "నేల రకం",
+    soilDefault: "నేల రకాన్ని ఎంచుకోండి",
+    black: "నల్ల నేల",
+    red: "ఎర్ర నేల",
+    loamy: "లోమీ నేల",
+    sandy: "ఇసుక నేల",
+    alluvial: "ఒండ్రు నేల",
+    area: "భూమి విస్తీర్ణం (ఎకరాల్లో)",
+    areaPlaceholder: "భూమి విస్తీర్ణం నమోదు చేయండి",
+    season: "కాలం",
+    seasonDefault: "కాలాన్ని ఎంచుకోండి",
+    kharif: "ఖరీఫ్ (వర్షాకాలం)",
+    rabi: "రబీ (శీతాకాలం)",
+    summer: "వేసవి",
+    water: "నీటి లభ్యత",
+    waterDefault: "నీటి లభ్యతను ఎంచుకోండి",
+    high: "ఎక్కువ",
+    medium: "మధ్యస్థం",
+    low: "తక్కువ",
+    button: "పంట సిఫార్సు పొందండి",
+    historyTitle: "📋 సిఫార్సుల చరిత్ర",
+    loadingHistory: "చరిత్ర లోడ్ అవుతోంది...",
+    fill: "దయచేసి అన్ని వివరాలను సరిగ్గా నమోదు చేయండి.",
+    recommended: "సిఫార్సు చేసిన పంటలు",
+    landArea: "భూమి విస్తీర్ణం",
+    selectedSeason: "ఎంచుకున్న కాలం",
+    acres: "ఎకరాలు",
+    noMatch: "సరైన పంట కనుగొనబడలేదు. స్థానిక వ్యవసాయ నిపుణుడిని సంప్రదించండి.",
+    note: "ఇవి సాధారణ సూచనలు మాత్రమే; హామీ ఇచ్చిన సిఫార్సులు కావు. నాటే ముందు స్థానిక వర్షపాతం, నేల పరిస్థితులు మరియు వ్యవసాయ సలహాలను పరిశీలించండి.",
+    saving: "సిఫార్సు సేవ్ అవుతోంది...",
+    saved: "సిఫార్సు విజయవంతంగా సేవ్ చేయబడింది!",
+    saveError: "సేవ్ చేయలేకపోయాము: ",
+    noHistory: "సిఫార్సుల చరిత్ర అందుబాటులో లేదు.",
+    historyError: "చరిత్రను లోడ్ చేయలేకపోయాము: ",
+    date: "తేదీ",
+    areaText: "విస్తీర్ణం",
+    seasonText: "కాలం",
+    waterText: "నీరు",
+    cropsText: "సిఫార్సు",
+    login: "దయచేసి ముందుగా లాగిన్ అవ్వండి!",
+    cropNames: {
+        "Cotton": "పత్తి",
+        "Sorghum (Jowar)": "జొన్న",
+        "Pigeon Pea (Tur)": "కందులు",
+        "Groundnut": "వేరుశనగ",
+        "Ragi": "రాగులు",
+        "Maize": "మొక్కజొన్న",
+        "Wheat": "గోధుమ",
+        "Vegetables": "కూరగాయలు",
+        "Millets": "చిరుధాన్యాలు",
+        "Watermelon": "పుచ్చకాయ",
+        "Rice": "వరి",
+        "Sugarcane": "చెరకు"
+    }
+},
+
+ta: {
+    title: "🌱 பயிர் பரிந்துரை",
+    subtitle: "உங்கள் விவசாய நிலத்திற்கு ஏற்ற பயிர்களைக் கண்டறியுங்கள்.",
+    soil: "மண் வகை",
+    soilDefault: "மண் வகையைத் தேர்ந்தெடுக்கவும்",
+    black: "கருப்பு மண்",
+    red: "சிவப்பு மண்",
+    loamy: "வண்டல் கலந்த மண்",
+    sandy: "மணல் மண்",
+    alluvial: "வண்டல் மண்",
+    area: "நிலப்பரப்பு (ஏக்கரில்)",
+    areaPlaceholder: "நிலப்பரப்பை உள்ளிடவும்",
+    season: "பருவம்",
+    seasonDefault: "பருவத்தைத் தேர்ந்தெடுக்கவும்",
+    kharif: "கரீஃப் (மழைக்காலம்)",
+    rabi: "ரபி (குளிர்காலம்)",
+    summer: "கோடை",
+    water: "நீர் கிடைக்கும் நிலை",
+    waterDefault: "நீர் கிடைக்கும் நிலையைத் தேர்ந்தெடுக்கவும்",
+    high: "அதிகம்",
+    medium: "நடுத்தரம்",
+    low: "குறைவு",
+    button: "பயிர் பரிந்துரையைப் பெறுங்கள்",
+    historyTitle: "📋 பரிந்துரை வரலாறு",
+    loadingHistory: "வரலாறு ஏற்றப்படுகிறது...",
+    fill: "அனைத்து விவரங்களையும் சரியாக நிரப்பவும்.",
+    recommended: "பரிந்துரைக்கப்பட்ட பயிர்கள்",
+    landArea: "நிலப்பரப்பு",
+    selectedSeason: "தேர்ந்தெடுத்த பருவம்",
+    acres: "ஏக்கர்",
+    noMatch: "பொருத்தமான பயிர் கிடைக்கவில்லை. உள்ளூர் வேளாண் நிபுணரை அணுகவும்.",
+    note: "இவை பொதுவான ஆலோசனைகள் மட்டுமே; உறுதியான பரிந்துரைகள் அல்ல. விதைப்பதற்கு முன் உள்ளூர் மழை, மண் நிலை மற்றும் வேளாண் ஆலோசனையை சரிபார்க்கவும்.",
+    saving: "பரிந்துரை சேமிக்கப்படுகிறது...",
+    saved: "பரிந்துரை வெற்றிகரமாக சேமிக்கப்பட்டது!",
+    saveError: "சேமிக்க முடியவில்லை: ",
+    noHistory: "பரிந்துரை வரலாறு இல்லை.",
+    historyError: "வரலாற்றை ஏற்ற முடியவில்லை: ",
+    date: "தேதி",
+    areaText: "பரப்பளவு",
+    seasonText: "பருவம்",
+    waterText: "நீர்",
+    cropsText: "பரிந்துரை",
+    login: "முதலில் உள்நுழையவும்!",
+    cropNames: {
+        "Cotton": "பருத்தி",
+        "Sorghum (Jowar)": "சோளம்",
+        "Pigeon Pea (Tur)": "துவரை",
+        "Groundnut": "நிலக்கடலை",
+        "Ragi": "கேழ்வரகு",
+        "Maize": "மக்காச்சோளம்",
+        "Wheat": "கோதுமை",
+        "Vegetables": "காய்கறிகள்",
+        "Millets": "சிறுதானியங்கள்",
+        "Watermelon": "தர்பூசணி",
+        "Rice": "நெல்",
+        "Sugarcane": "கரும்பு"
+    }
+}
+
+};
+
+
+// LANGUAGE CHANGE
+
+function changeLanguage(lang) {
+
+    currentLanguage = lang;
+
+    localStorage.setItem("agritec_dashboard_language", lang);
+
+    const t = translations[lang];
+
+    document.documentElement.lang = lang;
+
+    document.getElementById("pageTitle").textContent = t.title;
+    document.getElementById("subtitle").textContent = t.subtitle;
+
+    document.getElementById("soilLabel").textContent = t.soil;
+    document.getElementById("soilDefault").textContent = t.soilDefault;
+    document.getElementById("blackOption").textContent = t.black;
+    document.getElementById("redOption").textContent = t.red;
+    document.getElementById("loamyOption").textContent = t.loamy;
+    document.getElementById("sandyOption").textContent = t.sandy;
+    document.getElementById("alluvialOption").textContent = t.alluvial;
+
+    document.getElementById("areaLabel").textContent = t.area;
+    document.getElementById("area").placeholder = t.areaPlaceholder;
+
+    document.getElementById("seasonLabel").textContent = t.season;
+    document.getElementById("seasonDefault").textContent = t.seasonDefault;
+    document.getElementById("kharifOption").textContent = t.kharif;
+    document.getElementById("rabiOption").textContent = t.rabi;
+    document.getElementById("summerOption").textContent = t.summer;
+
+    document.getElementById("waterLabel").textContent = t.water;
+    document.getElementById("waterDefault").textContent = t.waterDefault;
+    document.getElementById("highOption").textContent = t.high;
+    document.getElementById("mediumOption").textContent = t.medium;
+    document.getElementById("lowOption").textContent = t.low;
+
+    recommendBtn.textContent = t.button;
+    document.getElementById("historyTitle").textContent = t.historyTitle;
+
+    languageSelect.value = lang;
+
+    if (lastRecommendation) {
+        renderRecommendation(lastRecommendation);
+    }
+
+    loadHistory();
+}
+
+languageSelect.addEventListener("change", function() {
+    changeLanguage(this.value);
+});
+
+
+// LOGIN CHECK
+
+async function checkLogin() {
+
+    const { data, error } = await supabaseClient.auth.getUser();
+
+    if (error || !data.user) {
+        alert(translations[currentLanguage].login);
+        window.location.href = "login.html";
+        return null;
+    }
+
+    return data.user;
+}
+
+
+// CROP RECOMMENDATION LOGIC
+
+function getRecommendedCrops(soil, season, water) {
+
+    let crops = [];
+
+    if (soil === "black") {
+        crops = ["Cotton", "Sorghum (Jowar)", "Pigeon Pea (Tur)"];
+    } else if (soil === "red") {
+        crops = ["Groundnut", "Ragi", "Pigeon Pea (Tur)"];
+    } else if (soil === "loamy") {
+        crops = ["Maize", "Wheat", "Vegetables"];
+    } else if (soil === "sandy") {
+        crops = ["Groundnut", "Millets", "Watermelon"];
+    } else if (soil === "alluvial") {
+        crops = ["Rice", "Wheat", "Sugarcane"];
+    }
+
+    if (season === "kharif") {
+        crops = crops.filter(crop =>
+            ["Cotton", "Sorghum (Jowar)", "Pigeon Pea (Tur)",
+             "Groundnut", "Ragi", "Maize", "Rice", "Millets"].includes(crop)
+        );
+    } else if (season === "rabi") {
+        crops = crops.filter(crop =>
+            ["Wheat", "Sorghum (Jowar)", "Pigeon Pea (Tur)",
+             "Vegetables", "Ragi"].includes(crop)
+        );
+    } else {
+        crops = crops.filter(crop =>
+            ["Groundnut", "Maize", "Vegetables", "Watermelon"].includes(crop)
+        );
+    }
+
+    if (water === "low") {
+        crops = crops.filter(crop =>
+            ["Ragi", "Millets", "Sorghum (Jowar)",
+             "Pigeon Pea (Tur)"].includes(crop)
+        );
+    }
+
+    if (water === "medium") {
+        crops = crops.filter(crop =>
+            crop !== "Sugarcane" && crop !== "Rice"
+        );
+    }
+
+    return crops;
+}
+
+
+// DISPLAY TRANSLATED CROP NAME
+
+function translateCrop(crop) {
+    return translations[currentLanguage].cropNames[crop] || crop;
+}
+
+
+// DISPLAY RECOMMENDATION
+
+function renderRecommendation(record) {
+
+    const t = translations[currentLanguage];
+
+    result.replaceChildren();
+
+    const heading = document.createElement("h2");
+    heading.textContent = t.recommended;
+    result.appendChild(heading);
+
+    const areaText = document.createElement("p");
+    areaText.textContent =
+        t.landArea + ": " + record.area + " " + t.acres;
+    result.appendChild(areaText);
+
+    const seasonText = document.createElement("p");
+    seasonText.textContent =
+        t.selectedSeason + ": " +
+        getSeasonName(record.season);
+    result.appendChild(seasonText);
+
+    record.crops.forEach(crop => {
+
+        const item = document.createElement("div");
+        item.className = "crop";
+        item.textContent = "🌾 " + translateCrop(crop);
+        result.appendChild(item);
+
+    });
+
+    const note = document.createElement("p");
+    note.textContent = t.note;
+    result.appendChild(note);
+
+    result.style.display = "block";
+}
+
+
+// SEASON TRANSLATION
+
+function getSeasonName(season) {
+
+    const t = translations[currentLanguage];
+
+    if (season === "kharif") return t.kharif;
+    if (season === "rabi") return t.rabi;
+    if (season === "summer") return t.summer;
+
+    return season;
+}
+
+
+// SOIL TRANSLATION
+
+function getSoilName(soil) {
+
+    const t = translations[currentLanguage];
+
+    const names = {
+        black: t.black,
+        red: t.red,
+        loamy: t.loamy,
+        sandy: t.sandy,
+        alluvial: t.alluvial
+    };
+
+    return names[soil] || soil;
+}
+
+
+// WATER TRANSLATION
+
+function getWaterName(water) {
+
+    const t = translations[currentLanguage];
+
+    const names = {
+        high: t.high,
+        medium: t.medium,
+        low: t.low
+    };
+
+    return names[water] || water;
+}
+
+
+// GENERATE RECOMMENDATION
+
+async function recommendCrops() {
+
+    const t = translations[currentLanguage];
+
+    statusBox.textContent = "";
+    result.style.display = "none";
+
+    const soil = document.getElementById("soil").value;
+    const area = Number(document.getElementById("area").value);
+    const season = document.getElementById("season").value;
+    const water = document.getElementById("water").value;
+
+    if (!soil || !area || area <= 0 || !season || !water) {
+        alert(t.fill);
+        return;
+    }
+
+    const user = await checkLogin();
+
+    if (!user) return;
+
+    recommendBtn.disabled = true;
+    statusBox.textContent = t.saving;
+    statusBox.style.color = "#555";
+
+    const crops = getRecommendedCrops(soil, season, water);
+
+    const finalCrops = crops.length > 0
+        ? crops
+        : ["NO_MATCH"];
+
+    lastRecommendation = {
+        area: area,
+        season: season,
+        crops: finalCrops
+    };
+
+    renderRecommendation(lastRecommendation);
+
+    try {
+
+        const { error } = await supabaseClient
+            .from("crop_recommendations")
+            .insert([{
+                user_id: user.id,
+                soil_type: soil,
+                land_area: area,
+                season: season,
+                water_availability: water,
+                recommended_crops: finalCrops
+            }]);
+
+        if (error) throw error;
+
+        statusBox.textContent = t.saved;
+        statusBox.style.color = "green";
+
+        await loadHistory();
+
+    } catch (error) {
+
+        statusBox.textContent = t.saveError + error.message;
+        statusBox.style.color = "red";
+
+        console.error(error);
+
+    } finally {
+
+        recommendBtn.disabled = false;
+
+    }
+}
+
+
+// LOAD RECOMMENDATION HISTORY
+
+async function loadHistory() {
+
+    const t = translations[currentLanguage];
+
+    const user = await checkLogin();
+
+    if (!user) return;
+
+    historyBox.textContent = t.loadingHistory;
+
+    const { data, error } = await supabaseClient
+        .from("crop_recommendations")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+    if (error) {
+
+        historyBox.textContent = t.historyError + error.message;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+
+        historyBox.textContent = t.noHistory;
+        return;
+    }
+
+    historyBox.replaceChildren();
+
+    data.forEach(record => {
+
+        const card = document.createElement("div");
+        card.className = "history-item";
+
+        const title = document.createElement("h3");
+
+        title.textContent =
+            "🌱 " + getSoilName(record.soil_type);
+
+        const details = document.createElement("p");
+
+        details.textContent =
+            t.areaText + ": " + record.land_area + " " + t.acres +
+            " | " + t.seasonText + ": " + getSeasonName(record.season) +
+            " | " + t.waterText + ": " +
+            getWaterName(record.water_availability);
+
+        const crops = document.createElement("p");
+
+        let cropList = Array.isArray(record.recommended_crops)
+            ? record.recommended_crops
+            : [];
+
+        crops.textContent = t.cropsText + ": " +
+            cropList.map(crop => {
+                return crop === "NO_MATCH"
+                    ? t.noMatch
+                    : translateCrop(crop);
+            }).join(", ");
+
+        const date = document.createElement("small");
+
+        let locale = "en-IN";
+
+        if (currentLanguage === "kn") locale = "kn-IN";
+        if (currentLanguage === "hi") locale = "hi-IN";
+        if (currentLanguage === "te") locale = "te-IN";
+        if (currentLanguage === "ta") locale = "ta-IN";
+
+        date.textContent = t.date + ": " +
+            new Date(record.created_at).toLocaleString(locale);
+
+        card.append(title, details, crops, date);
+
+        historyBox.appendChild(card);
+
+    });
+}
+
+
+// INITIALIZE PAGE
+
+changeLanguage(currentLanguage);
+
+</script>
+
+</body>
+</html>

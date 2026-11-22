@@ -1,0 +1,513 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Land Verification</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f1f7f2;
+    color: #26352b;
+}
+
+header {
+    background: linear-gradient(120deg, #064e32, #2e8b57);
+    color: white;
+    padding: 25px 6%;
+}
+
+header h1 {
+    margin-bottom: 8px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 30px auto;
+    padding: 0 18px;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 22px;
+}
+
+.topbar h2 {
+    color: #176b3b;
+}
+
+.back-btn {
+    background: #176b3b;
+    color: white;
+    text-decoration: none;
+    padding: 11px 17px;
+    border-radius: 7px;
+}
+
+.summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.summary-card {
+    background: white;
+    padding: 22px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px #00000010;
+    border-left: 5px solid #2e8b57;
+}
+
+.summary-card h3 {
+    color: #63776a;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.summary-card p {
+    color: #176b3b;
+    font-size: 29px;
+    font-weight: bold;
+}
+
+.section {
+    background: white;
+    padding: 22px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px #00000010;
+}
+
+.section h2 {
+    color: #176b3b;
+    margin-bottom: 18px;
+}
+
+.search {
+    width: 100%;
+    max-width: 400px;
+    padding: 12px;
+    border: 1px solid #ccd8ce;
+    border-radius: 7px;
+    margin-bottom: 18px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    min-width: 950px;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 14px;
+    text-align: left;
+    border-bottom: 1px solid #e8eee9;
+}
+
+th {
+    background: #edf6ef;
+    color: #245b39;
+    font-size: 13px;
+}
+
+td {
+    font-size: 14px;
+}
+
+.status {
+    padding: 6px 11px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.pending {
+    background: #fff2d6;
+    color: #946200;
+}
+
+.verified {
+    background: #dcf5e4;
+    color: #16723b;
+}
+
+.disputed {
+    background: #ffe2e2;
+    color: #b42323;
+}
+
+select {
+    padding: 9px;
+    border: 1px solid #ccd8ce;
+    border-radius: 6px;
+}
+
+button {
+    background: #176b3b;
+    color: white;
+    padding: 9px 13px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+#message {
+    margin: 15px 0;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.empty {
+    text-align: center;
+    padding: 25px;
+    color: #77877b;
+}
+
+@media(max-width: 600px) {
+    header h1 {
+        font-size: 22px;
+    }
+
+    .section {
+        padding: 14px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🌾 Land Ownership Verification</h1>
+    <p>Farm Management System - Admin Panel</p>
+</header>
+
+<div class="container">
+
+    <div class="topbar">
+        <h2>Land Verification Requests</h2>
+        <a href="admin.html" class="back-btn">← Admin Dashboard</a>
+    </div>
+
+    <div class="summary">
+
+        <div class="summary-card">
+            <h3>Total Requests</h3>
+            <p id="totalCount">0</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Pending</h3>
+            <p id="pendingCount">0</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Verified</h3>
+            <p id="verifiedCount">0</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Disputed</h3>
+            <p id="disputedCount">0</p>
+        </div>
+
+    </div>
+
+    <div class="section">
+
+        <h2>📋 Submitted Land Details</h2>
+
+        <input
+            type="search"
+            id="searchInput"
+            class="search"
+            placeholder="Search farmer, survey number or village..."
+        >
+
+        <p id="message"></p>
+
+        <div class="table-container">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Farmer Name</th>
+                        <th>Survey Number</th>
+                        <th>Village</th>
+                        <th>Taluk</th>
+                        <th>District</th>
+                        <th>Land Area</th>
+                        <th>Status</th>
+                        <th>Update Status</th>
+                    </tr>
+                </thead>
+
+                <tbody id="landTable">
+                    <tr>
+                        <td colspan="8" class="empty">
+                            Loading land records...
+                        </td>
+                    </tr>
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
+
+<script>
+
+const tableBody = document.getElementById("landTable");
+const message = document.getElementById("message");
+
+let allRecords = [];
+
+function safe(value) {
+    const div = document.createElement("div");
+    div.textContent = value ?? "";
+    return div.innerHTML;
+}
+
+function statusClass(status) {
+
+    if (status === "Verified") return "verified";
+    if (status === "Disputed") return "disputed";
+
+    return "pending";
+}
+
+
+// CHECK ADMIN
+
+async function checkAdmin() {
+
+    const { data: { user }, error } =
+        await supabaseClient.auth.getUser();
+
+    if (error || !user) {
+        window.location.href = "login.html";
+        return false;
+    }
+
+    const { data: roleData, error: roleError } =
+        await supabaseClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (roleError) {
+        message.textContent = roleError.message;
+        return false;
+    }
+
+    if (!roleData || roleData.role !== "admin") {
+        message.textContent = "Admin access required.";
+        return false;
+    }
+
+    return true;
+}
+
+
+// LOAD LAND RECORDS
+
+async function loadLandRecords() {
+
+    tableBody.innerHTML =
+        `<tr><td colspan="8" class="empty">Loading...</td></tr>`;
+
+    const { data, error } = await supabaseClient
+        .from("land_verifications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        message.textContent = "Error: " + error.message;
+        return;
+    }
+
+    allRecords = data || [];
+
+    updateSummary();
+    displayRecords(allRecords);
+}
+
+
+// SUMMARY COUNTS
+
+function updateSummary() {
+
+    document.getElementById("totalCount").textContent =
+        allRecords.length;
+
+    document.getElementById("pendingCount").textContent =
+        allRecords.filter(r =>
+            (r.verification_status || "Pending") === "Pending"
+        ).length;
+
+    document.getElementById("verifiedCount").textContent =
+        allRecords.filter(r =>
+            r.verification_status === "Verified"
+        ).length;
+
+    document.getElementById("disputedCount").textContent =
+        allRecords.filter(r =>
+            r.verification_status === "Disputed"
+        ).length;
+}
+
+
+// DISPLAY TABLE
+
+function displayRecords(records) {
+
+    tableBody.innerHTML = "";
+
+    if (records.length === 0) {
+        tableBody.innerHTML =
+            `<tr><td colspan="8" class="empty">No land requests found.</td></tr>`;
+        return;
+    }
+
+    records.forEach(record => {
+
+        const row = document.createElement("tr");
+
+        const currentStatus =
+            record.verification_status || "Pending";
+
+        row.innerHTML = `
+            <td>${safe(record.farmer_name)}</td>
+            <td>${safe(record.survey_number)}</td>
+            <td>${safe(record.village)}</td>
+            <td>${safe(record.taluk)}</td>
+            <td>${safe(record.district)}</td>
+            <td>${safe(record.land_area)} Acres</td>
+            <td>
+                <span class="status ${statusClass(currentStatus)}">
+                    ${safe(currentStatus)}
+                </span>
+            </td>
+            <td>
+                <select id="status-${record.id}">
+                    <option value="Pending">Pending</option>
+                    <option value="Verified">Verified</option>
+                    <option value="Disputed">Disputed</option>
+                </select>
+                <button type="button"
+                    onclick="updateStatus(${Number(record.id)})">
+                    Save
+                </button>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+
+        document.getElementById("status-" + record.id).value =
+            currentStatus;
+    });
+}
+
+
+// UPDATE STATUS
+
+async function updateStatus(id) {
+
+    const select = document.getElementById("status-" + id);
+    const newStatus = select.value;
+
+    const { error } = await supabaseClient
+        .from("land_verifications")
+        .update({
+            verification_status: newStatus
+        })
+        .eq("id", id);
+
+    if (error) {
+        alert("Status update failed: " + error.message);
+        return;
+    }
+
+    alert("Land verification status updated successfully!");
+
+    await loadLandRecords();
+}
+
+
+// SEARCH
+
+document.getElementById("searchInput")
+.addEventListener("input", function() {
+
+    const value = this.value.trim().toLowerCase();
+
+    const filtered = allRecords.filter(record => {
+
+        return [
+            record.farmer_name,
+            record.survey_number,
+            record.village,
+            record.taluk,
+            record.district
+        ].some(item =>
+            String(item || "").toLowerCase().includes(value)
+        );
+
+    });
+
+    displayRecords(filtered);
+});
+
+
+// START
+
+async function startPage() {
+
+    if (typeof supabaseClient === "undefined") {
+        message.textContent =
+            "Supabase connection not loaded. Check supabase.js.";
+        return;
+    }
+
+    const allowed = await checkAdmin();
+
+    if (!allowed) return;
+
+    await loadLandRecords();
+}
+
+startPage();
+
+</script>
+
+</body>
+</html>

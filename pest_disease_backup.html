@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agritec - Crop Doctor</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f1f8f4;
+    color: #1f2937;
+}
+
+header {
+    background: linear-gradient(135deg, #064e32, #218c58);
+    color: white;
+    padding: 20px;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+header h1 {
+    font-size: 25px;
+}
+
+header p {
+    margin-top: 6px;
+    color: #e2f5e9;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+button {
+    border: none;
+    border-radius: 9px;
+    padding: 11px 17px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.back-btn {
+    background: white;
+    color: #065f38;
+}
+
+.lang-btn {
+    background: #d8f3dc;
+    color: #064e32;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 25px auto;
+    padding: 0 15px;
+}
+
+.card {
+    background: white;
+    border-radius: 16px;
+    padding: 23px;
+    margin-bottom: 22px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+
+.card h2 {
+    color: #12683e;
+    margin-bottom: 15px;
+}
+
+.description {
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    margin-bottom: 17px;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 9px;
+    background: white;
+    font-size: 15px;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #218c58;
+}
+
+.upload-area {
+    border: 2px dashed #76b98f;
+    background: #f6fcf8;
+    padding: 28px;
+    border-radius: 14px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    background: #eaf7ee;
+}
+
+.upload-area p {
+    margin-top: 8px;
+    color: #64748b;
+}
+
+#imageInput {
+    display: none;
+}
+
+.preview-container {
+    margin-top: 18px;
+    text-align: center;
+    display: none;
+}
+
+#previewImage {
+    max-width: 100%;
+    max-height: 350px;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+}
+
+#fileName {
+    margin-top: 8px;
+    color: #64748b;
+    word-break: break-all;
+}
+
+.analyze-btn {
+    background: #15803d;
+    color: white;
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    margin-top: 15px;
+}
+
+.analyze-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.status {
+    padding: 13px;
+    border-radius: 9px;
+    margin-top: 15px;
+    display: none;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.status.loading {
+    display: block;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.status.error {
+    display: block;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.status.success {
+    display: block;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.result-section {
+    display: none;
+}
+
+.result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+}
+
+.result-box {
+    border: 1px solid #e5e7eb;
+    background: #fbfdfb;
+    padding: 17px;
+    border-radius: 12px;
+}
+
+.result-box.full {
+    grid-column: 1 / -1;
+}
+
+.result-box h3 {
+    color: #167345;
+    font-size: 16px;
+    margin-bottom: 9px;
+}
+
+.result-box p {
+    line-height: 1.65;
+    color: #374151;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.confidence {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: #e0f2fe;
+    color: #075985;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.history-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid #e5e7eb;
+    border-radius: 11px;
+    padding: 12px;
+}
+
+.history-item img {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.history-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-info strong {
+    color: #166534;
+}
+
+.history-info p {
+    font-size: 14px;
+    margin-top: 5px;
+    color: #64748b;
+    overflow-wrap: anywhere;
+}
+
+.history-delete {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.clear-history {
+    background: #fee2e2;
+    color: #991b1b;
+    margin-top: 15px;
+}
+
+.empty-history {
+    color: #6b7280;
+    padding: 10px 0;
+}
+
+.disclaimer {
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 14px;
+    line-height: 1.6;
+    margin-top: 15px;
+}
+
+footer {
+    text-align: center;
+    padding: 25px;
+    color: #64748b;
+}
+
+@media (max-width: 650px) {
+    header h1 {
+        font-size: 21px;
+    }
+
+    .result-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .result-box.full {
+        grid-column: auto;
+    }
+
+    .card {
+        padding: 17px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="header-content">
+        <div>
+            <h1 id="pageTitle">🌿 Agritec Crop Doctor</h1>
+            <p id="pageSubtitle">AI-powered crop disease analysis</p>
+        </div>
+
+        <div class="header-buttons">
+            <button class="lang-btn" id="languageBtn" onclick="toggleLanguage()">
+                ಕನ್ನಡ
+            </button>
+
+            <button class="back-btn" onclick="goDashboard()">
+                ← Dashboard
+            </button>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- UPLOAD CARD -->
+
+    <div class="card">
+        <h2 id="uploadHeading">📷 Upload Crop Photo</h2>
+
+        <p class="description" id="uploadDescription">
+            Upload a clear image of the affected leaf, plant, fruit or crop.
+            AI will examine visible signs and provide a preliminary assessment.
+        </p>
+
+        <div class="form-group">
+            <label id="cropLabel" for="cropSelect">Select Crop</label>
+
+            <select id="cropSelect">
+                <option value="">-- Select Crop --</option>
+                <option value="Rice">Rice / Paddy</option>
+                <option value="Wheat">Wheat</option>
+                <option value="Maize">Maize</option>
+                <option value="Tomato">Tomato</option>
+                <option value="Potato">Potato</option>
+                <option value="Cotton">Cotton</option>
+                <option value="Sugarcane">Sugarcane</option>
+                <option value="Groundnut">Groundnut</option>
+                <option value="Chilli">Chilli</option>
+                <option value="Onion">Onion</option>
+                <option value="Grapes">Grapes</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label id="photoLabel">Crop Image</label>
+
+            <div class="upload-area" onclick="document.getElementById('imageInput').click()">
+                <div style="font-size:40px;">📸</div>
+
+                <strong id="uploadText">
+                    Click here to select a photo
+                </strong>
+
+                <p id="uploadHint">
+                    JPG, PNG or WEBP
+                </p>
+            </div>
+
+            <input
+                type="file"
+                id="imageInput"
+                accept="image/jpeg,image/png,image/webp"
+            >
+
+            <div class="preview-container" id="previewContainer">
+                <img id="previewImage" alt="Crop photo preview">
+                <p id="fileName"></p>
+            </div>
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn" onclick="analyzeImage()">
+            🔍 Analyze Crop with AI
+        </button>
+
+        <div class="status" id="statusBox"></div>
+    </div>
+
+
+    <!-- RESULTS -->
+
+    <div class="card result-section" id="resultSection">
+
+        <h2 id="resultHeading">🧠 AI Analysis Results</h2>
+
+        <div class="result-grid" id="resultGrid"></div>
+
+        <div class="disclaimer" id="disclaimer">
+            AI image analysis is a preliminary assessment and may not be
+            completely accurate. Confirm serious crop problems with a local
+            agricultural officer or qualified expert.
+        </div>
+    </div>
+
+
+    <!-- HISTORY -->
+
+    <div class="card">
+        <h2 id="historyHeading">📜 Analysis History</h2>
+
+        <div class="history-list" id="historyList"></div>
+
+        <button class="clear-history" id="clearHistoryBtn"
+                onclick="clearHistory()">
+            🗑 Clear History
+        </button>
+    </div>
+
+</div>
+
+<footer>
+    <p>🌱 Agritec – Smart Farming Assistance</p>
+</footer>
+
+
+<script>
+/* ==========================================
+   SUPABASE CLIENT
+========================================== */
+
+function getSupabaseClient() {
+    return supabaseClient;
+}
+
+
+/* ==========================================
+   ELEMENTS
+========================================== */
+
+const imageInput = document.getElementById("imageInput");
+const previewImage = document.getElementById("previewImage");
+const previewContainer = document.getElementById("previewContainer");
+const fileName = document.getElementById("fileName");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const statusBox = document.getElementById("statusBox");
+const resultSection = document.getElementById("resultSection");
+const resultGrid = document.getElementById("resultGrid");
+const cropSelect = document.getElementById("cropSelect");
+
+let selectedFile = null;
+let currentLanguage = "en";
+let currentImageData = null;
+
+
+/* ==========================================
+   IMAGE UPLOAD
+========================================== */
+
+imageInput.addEventListener("change", function(event) {
+
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+        showStatus(
+            "Please select JPG, PNG or WEBP image.",
+            "error"
+        );
+
+        imageInput.value = "";
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        showStatus(
+            "Image is too large. Please select an image under 5 MB.",
+            "error"
+        );
+
+        imageInput.value = "";
+        return;
+    }
+
+    selectedFile = file;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+
+        currentImageData = e.target.result;
+
+        previewImage.src = currentImageData;
+
+        previewContainer.style.display = "block";
+
+        fileName.textContent = file.name;
+
+        resultSection.style.display = "none";
+
+        hideStatus();
+    };
+
+    reader.onerror = function() {
+        showStatus("Could not read the image file.", "error");
+    };
+
+    reader.readAsDataURL(file);
+});
+
+
+/* ==========================================
+   STATUS MESSAGE
+========================================== */
+
+function showStatus(message, type) {
+
+    statusBox.textContent = message;
+
+    statusBox.className = "status " + type;
+
+    statusBox.style.display = "block";
+}
+
+function hideStatus() {
+
+    statusBox.textContent = "";
+
+    statusBox.className = "status";
+
+    statusBox.style.display = "none";
+}
+
+
+/* ==========================================
+   ANALYZE IMAGE
+========================================== */
+
+async function analyzeImage() {
+
+    if (!selectedFile) {
+        showStatus(
+            currentLanguage === "kn"
+                ? "ಮೊದಲು ಬೆಳೆ ಫೋಟೋ upload ಮಾಡಿ."
+                : "Please upload a crop photo first.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (!cropSelect.value) {
+        showStatus(
+            currentLanguage === "kn"
+                ? "ದಯವಿಟ್ಟು ಬೆಳೆಯನ್ನು ಆಯ್ಕೆ ಮಾಡಿ."
+                : "Please select the crop.",
+            "error"
+        );
+
+        return;
+    }
+
+    const supabaseClient = getSupabaseClient();
+
+    if (!supabaseClient) {
+
+        showStatus(
+            "Supabase client not found. Please check supabase.js.",
+            "error"
+        );
+
+        return;
+    }
+
+    analyzeBtn.disabled = true;
+
+    analyzeBtn.textContent =
+        currentLanguage === "kn"
+            ? "⏳ AI ವಿಶ್ಲೇಷಣೆ ಮಾಡುತ್ತಿದೆ..."
+            : "⏳ AI is analyzing image...";
+
+    showStatus(
+        currentLanguage === "kn"
+            ? "ಫೋಟೋವನ್ನು AI ವಿಶ್ಲೇಷಿಸುತ್ತಿದೆ. ದಯವಿಟ್ಟು ಕಾಯಿರಿ..."
+            : "AI is examining your image. Please wait...",
+        "loading"
+    );
+
+    resultSection.style.display = "none";
+
+    try {
+
+        const base64Data = currentImageData.split(",")[1];
+
+        const payload = {
+            imageBase64: base64Data,
+            mimeType: selectedFile.type,
+            cropName: cropSelect.value
+        };
+
+        const { data, error } =
+            await supabaseClient.functions.invoke(
+                "crop-disease-ai",
+                {
+                    body: payload
+                }
+            );
+
+        if (error) {
+
+            let detailedMessage = error.message || "Unknown error";
+
+            if (error.context) {
+
+                try {
+
+                    const responseText = await error.context.text();
+
+                    if (responseText) {
+                        detailedMessage = responseText;
+                    }
+
+                } catch (e) {
+                    // Keep original error message.
+                }
+            }
+
+            throw new Error(detailedMessage);
+        }
+
+        if (!data) {
+            throw new Error("No response received from the AI function.");
+        }
+
+        if (data.error) {
+
+            let errorDetails = data.error;
+
+            if (data.details) {
+                errorDetails += "\n" + data.details;
+            }
+
+            if (data.geminiStatus) {
+                errorDetails +=
+                    "\nGemini HTTP Status: " + data.geminiStatus;
+            }
+
+            throw new Error(errorDetails);
+        }
+
+        if (!data.analysis) {
+            throw new Error(
+                "AI response did not contain analysis data."
+            );
+        }
+
+        displayResults(data.analysis);
+
+        saveHistory(
+            cropSelect.value,
+            data.analysis,
+            currentImageData
+        );
+
+        showStatus(
+            currentLanguage === "kn"
+                ? "ವಿಶ್ಲೇಷಣೆ ಪೂರ್ಣಗೊಂಡಿದೆ!"
+                : "AI analysis completed successfully!",
+            "success"
+        );
+
+    } catch (error) {
+
+        console.error("Crop Doctor error:", error);
+
+        showStatus(
+            "AI analysis failed:\n" +
+            (error.message || String(error)),
+            "error"
+        );
+
+    } finally {
+
+        analyzeBtn.disabled = false;
+
+        analyzeBtn.textContent =
+            currentLanguage === "kn"
+                ? "🔍 AI ಮೂಲಕ ವಿಶ್ಲೇಷಿಸಿ"
+                : "🔍 Analyze Crop with AI";
+    }
+}
+
+
+/* ==========================================
+   DISPLAY AI RESULTS
+========================================== */
+
+function displayResults(analysis) {
+
+    resultGrid.innerHTML = "";
+
+    const fields = [
+        {
+            key: "plantIdentification",
+            title: "🌱 Plant Identification"
+        },
+        {
+            key: "identificationConfidence",
+            title: "📊 Identification Confidence"
+        },
+        {
+            key: "visibleObservations",
+            title: "🔎 Visible Observations",
+            full: true
+        },
+        {
+            key: "possibleDisease",
+            title: "🦠 Possible Disease / Problem",
+            full: true
+        },
+        {
+            key: "diagnosisConfidence",
+            title: "📊 Diagnosis Confidence"
+        },
+        {
+            key: "alternativePossibilities",
+            title: "🔬 Alternative Possibilities"
+        },
+        {
+            key: "possibleCauses",
+            title: "⚠️ Possible Causes",
+            full: true
+        },
+        {
+            key: "treatment",
+            title: "💡 Management / Treatment",
+            full: true
+        },
+        {
+            key: "prevention",
+            title: "🛡️ Prevention",
+            full: true
+        },
+        {
+            key: "whenToSeekExpert",
+            title: "👨‍🌾 When to Seek Expert Help",
+            full: true
+        },
+        {
+            key: "imageLimitations",
+            title: "📷 Image Limitations",
+            full: true
+        }
+    ];
+
+    fields.forEach(field => {
+
+        const value = analysis[field.key];
+
+        if (value === undefined || value === null || value === "") {
+            return;
+        }
+
+        const box = document.createElement("div");
+
+        box.className = "result-box";
+
+        if (field.full) {
+            box.classList.add("full");
+        }
+
+        const heading = document.createElement("h3");
+
+        heading.textContent = field.title;
+
+        const paragraph = document.createElement("p");
+
+        paragraph.textContent =
+            typeof value === "string"
+                ? value
+                : JSON.stringify(value, null, 2);
+
+        box.appendChild(heading);
+        box.appendChild(paragraph);
+
+        resultGrid.appendChild(box);
+    });
+
+    resultSection.style.display = "block";
+
+    resultSection.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+}
+
+
+/* ==========================================
+   HISTORY STORAGE
+========================================== */
+
+function getHistory() {
+
+    try {
+
+        return JSON.parse(
+            localStorage.getItem("agritec_crop_doctor_history") || "[]"
+        );
+
+    } catch (error) {
+
+        return [];
+    }
+}
+
+
+function saveHistory(crop, analysis, imageData) {
+
+    const history = getHistory();
+
+    history.unshift({
+        id: Date.now(),
+        crop: crop,
+        disease: analysis.possibleDisease || "Analysis completed",
+        date: new Date().toLocaleString(),
+        image: imageData
+    });
+
+    // Keep the latest 10 entries.
+    const limitedHistory = history.slice(0, 10);
+
+    try {
+
+        localStorage.setItem(
+            "agritec_crop_doctor_history",
+            JSON.stringify(limitedHistory)
+        );
+
+    } catch (error) {
+
+        console.warn("Could not save history:", error);
+
+        // If image storage is too large, save history without images.
+        const textOnlyHistory = limitedHistory.map(item => ({
+            ...item,
+            image: ""
+        }));
+
+        try {
+
+            localStorage.setItem(
+                "agritec_crop_doctor_history",
+                JSON.stringify(textOnlyHistory)
+            );
+
+        } catch (e) {
+            console.warn("History storage unavailable.");
+        }
+    }
+
+    renderHistory();
+}
+
+
+/* ==========================================
+   RENDER HISTORY
+========================================== */
+
+function renderHistory() {
+
+    const historyList = document.getElementById("historyList");
+
+    const history = getHistory();
+
+    historyList.innerHTML = "";
+
+    if (history.length === 0) {
+
+        const empty = document.createElement("p");
+
+        empty.className = "empty-history";
+
+        empty.textContent = "No analysis history yet.";
+
+        historyList.appendChild(empty);
+
+        return;
+    }
+
+    history.forEach(item => {
+
+        const row = document.createElement("div");
+
+        row.className = "history-item";
+
+        if (item.image) {
+
+            const img = document.createElement("img");
+
+            img.src = item.image;
+
+            img.alt = "Crop";
+
+            row.appendChild(img);
+        }
+
+        const info = document.createElement("div");
+
+        info.className = "history-info";
+
+        const crop = document.createElement("strong");
+
+        crop.textContent = item.crop || "Unknown crop";
+
+        const disease = document.createElement("p");
+
+        disease.textContent = item.disease || "Analysis completed";
+
+        const date = document.createElement("p");
+
+        date.textContent = item.date || "";
+
+        info.appendChild(crop);
+        info.appendChild(disease);
+        info.appendChild(date);
+
+        row.appendChild(info);
+
+        const deleteBtn = document.createElement("button");
+
+        deleteBtn.className = "history-delete";
+
+        deleteBtn.textContent = "Delete";
+
+        deleteBtn.onclick = function() {
+            deleteHistoryItem(item.id);
+        };
+
+        row.appendChild(deleteBtn);
+
+        historyList.appendChild(row);
+    });
+}
+
+
+/* ==========================================
+   DELETE HISTORY ITEM
+========================================== */
+
+function deleteHistoryItem(id) {
+
+    const history = getHistory().filter(item => item.id !== id);
+
+    localStorage.setItem(
+        "agritec_crop_doctor_history",
+        JSON.stringify(history)
+    );
+
+    renderHistory();
+}
+
+
+/* ==========================================
+   CLEAR HISTORY
+========================================== */
+
+function clearHistory() {
+
+    if (!confirm("Are you sure you want to clear all analysis history?")) {
+        return;
+    }
+
+    localStorage.removeItem("agritec_crop_doctor_history");
+
+    renderHistory();
+}
+
+
+/* ==========================================
+   DASHBOARD NAVIGATION
+========================================== */
+
+function goDashboard() {
+
+    window.location.href = "dashboard.html";
+}
+
+
+/* ==========================================
+   KANNADA / ENGLISH UI
+========================================== */
+
+function toggleLanguage() {
+
+    currentLanguage =
+        currentLanguage === "en" ? "kn" : "en";
+
+    const isKannada = currentLanguage === "kn";
+
+    document.getElementById("languageBtn").textContent =
+        isKannada ? "English" : "ಕನ್ನಡ";
+
+    document.getElementById("pageTitle").textContent =
+        isKannada
+            ? "🌿 Agritec ಬೆಳೆ ವೈದ್ಯ"
+            : "🌿 Agritec Crop Doctor";
+
+    document.getElementById("pageSubtitle").textContent =
+        isKannada
+            ? "AI ಆಧಾರಿತ ಬೆಳೆ ರೋಗ ವಿಶ್ಲೇಷಣೆ"
+            : "AI-powered crop disease analysis";
+
+    document.getElementById("uploadHeading").textContent =
+        isKannada
+            ? "📷 ಬೆಳೆ ಫೋಟೋ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ"
+            : "📷 Upload Crop Photo";
+
+    document.getElementById("uploadDescription").textContent =
+        isKannada
+            ? "ಹಾನಿಗೊಳಗಾದ ಎಲೆ, ಗಿಡ, ಹಣ್ಣು ಅಥವಾ ಬೆಳೆಯ ಸ್ಪಷ್ಟ ಫೋಟೋ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ."
+            : "Upload a clear image of the affected leaf, plant, fruit or crop.";
+
+    document.getElementById("cropLabel").textContent =
+        isKannada ? "ಬೆಳೆ ಆಯ್ಕೆ ಮಾಡಿ" : "Select Crop";
+
+    document.getElementById("photoLabel").textContent =
+        isKannada ? "ಬೆಳೆ ಚಿತ್ರ" : "Crop Image";
+
+    document.getElementById("uploadText").textContent =
+        isKannada
+            ? "ಫೋಟೋ ಆಯ್ಕೆ ಮಾಡಲು ಇಲ್ಲಿ ಕ್ಲಿಕ್ ಮಾಡಿ"
+            : "Click here to select a photo";
+
+    document.getElementById("uploadHint").textContent =
+        isKannada
+            ? "JPG, PNG ಅಥವಾ WEBP"
+            : "JPG, PNG or WEBP";
+
+    document.getElementById("analyzeBtn").textContent =
+        isKannada
+            ? "🔍 AI ಮೂಲಕ ವಿಶ್ಲೇಷಿಸಿ"
+            : "🔍 Analyze Crop with AI";
+
+    document.getElementById("resultHeading").textContent =
+        isKannada
+            ? "🧠 AI ವಿಶ್ಲೇಷಣೆ ಫಲಿತಾಂಶ"
+            : "🧠 AI Analysis Results";
+
+    document.getElementById("historyHeading").textContent =
+        isKannada
+            ? "📜 ವಿಶ್ಲೇಷಣೆ ಇತಿಹಾಸ"
+            : "📜 Analysis History";
+
+    document.getElementById("clearHistoryBtn").textContent =
+        isKannada
+            ? "🗑 ಇತಿಹಾಸ ಅಳಿಸಿ"
+            : "🗑 Clear History";
+
+    document.getElementById("disclaimer").textContent =
+        isKannada
+            ? "AI ಫೋಟೋ ವಿಶ್ಲೇಷಣೆ ಪ್ರಾಥಮಿಕ ಮಾಹಿತಿ ಮಾತ್ರ. ಸಂಪೂರ್ಣ ನಿಖರವಾಗಿರದೇ ಇರಬಹುದು. ಗಂಭೀರ ಬೆಳೆ ಸಮಸ್ಯೆಗಳಿಗೆ ಸ್ಥಳೀಯ ಕೃಷಿ ಅಧಿಕಾರಿಗಳ ಸಲಹೆ ಪಡೆಯಿರಿ."
+            : "AI image analysis is a preliminary assessment and may not be completely accurate. Confirm serious crop problems with a local agricultural officer or qualified expert.";
+
+    document.querySelector(".back-btn").textContent =
+        isKannada ? "← ಡ್ಯಾಶ್‌ಬೋರ್ಡ್" : "← Dashboard";
+
+    document.querySelectorAll("#cropSelect option")[0].textContent =
+        isKannada ? "-- ಬೆಳೆ ಆಯ್ಕೆ --" : "-- Select Crop --";
+
+    document.querySelectorAll("#cropSelect option")[1].textContent =
+        isKannada ? "ಭತ್ತ" : "Rice / Paddy";
+
+    document.querySelectorAll("#cropSelect option")[2].textContent =
+        isKannada ? "ಗೋಧಿ" : "Wheat";
+
+    document.querySelectorAll("#cropSelect option")[3].textContent =
+        isKannada ? "ಮೆಕ್ಕೆಜೋಳ" : "Maize";
+
+    document.querySelectorAll("#cropSelect option")[4].textContent =
+        isKannada ? "ಟೊಮೇಟೊ" : "Tomato";
+
+    document.querySelectorAll("#cropSelect option")[5].textContent =
+        isKannada ? "ಆಲೂಗಡ್ಡೆ" : "Potato";
+
+    document.querySelectorAll("#cropSelect option")[6].textContent =
+        isKannada ? "ಹತ್ತಿ" : "Cotton";
+
+    document.querySelectorAll("#cropSelect option")[7].textContent =
+        isKannada ? "ಕಬ್ಬು" : "Sugarcane";
+
+    document.querySelectorAll("#cropSelect option")[8].textContent =
+        isKannada ? "ಶೇಂಗಾ" : "Groundnut";
+
+    document.querySelectorAll("#cropSelect option")[9].textContent =
+        isKannada ? "ಮೆಣಸಿನಕಾಯಿ" : "Chilli";
+
+    document.querySelectorAll("#cropSelect option")[10].textContent =
+        isKannada ? "ಈರುಳ್ಳಿ" : "Onion";
+
+    document.querySelectorAll("#cropSelect option")[11].textContent =
+        isKannada ? "ದ್ರಾಕ್ಷಿ" : "Grapes";
+
+    document.querySelectorAll("#cropSelect option")[12].textContent =
+        isKannada ? "ಇತರೆ" : "Other";
+}
+
+
+/* ==========================================
+   INITIALIZE
+========================================== */
+
+renderHistory();
+
+</script>
+
+</body>
+</html>

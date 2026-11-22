@@ -1,0 +1,560 @@
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Irrigation Management</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;padding:25px;background:#f1f8e9}
+.container{max-width:1000px;margin:auto}
+h1{color:#176b35;text-align:center}
+.form-box,.records-box{background:white;padding:25px;border-radius:12px;margin-top:25px;box-shadow:0 4px 12px #0001}
+h2{color:#176b35}
+label{display:block;margin-top:15px;font-weight:bold}
+input,select,textarea{width:100%;padding:12px;margin-top:7px;border:1px solid #ccc;border-radius:7px}
+button{padding:12px 20px;margin-top:18px;background:#269b50;color:white;border:none;border-radius:7px;cursor:pointer}
+button:hover{background:#176b35}
+.back-btn{background:#555}
+.delete-btn{background:#d32f2f;margin:0}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{padding:12px;border:1px solid #ddd;text-align:left}
+th{background:#269b50;color:white}
+tr:nth-child(even){background:#f5f5f5}
+#message{margin-top:15px;color:#176b35}
+.table-wrapper{overflow-x:auto}
+.language-box{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:15px}
+.language-box select{width:auto;min-width:150px}
+@media(max-width:600px){
+body{padding:12px}
+.form-box,.records-box{padding:15px}
+.language-box{justify-content:center}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="language-box">
+<label id="languageLabel" style="margin:0">Language:</label>
+<select id="languageSelect">
+<option value="en">English</option>
+<option value="kn">ಕನ್ನಡ</option>
+<option value="hi">हिंदी</option>
+<option value="te">తెలుగు</option>
+<option value="ta">தமிழ்</option>
+</select>
+</div>
+
+<h1 id="pageTitle">💧 Irrigation Management System</h1>
+
+<div class="form-box">
+<h2 id="formTitle">Add Irrigation Record</h2>
+
+<form id="irrigationForm">
+
+<label id="cropLabel">Crop Name</label>
+<input type="text" id="cropName" placeholder="Enter crop name" required>
+
+<label id="dateLabel">Irrigation Date</label>
+<input type="date" id="irrigationDate" required>
+
+<label id="waterLabel">Water Quantity (Litres)</label>
+<input type="number" id="waterQuantity" placeholder="Enter water quantity" min="0.1" step="0.1" required>
+
+<label id="methodLabel">Irrigation Method</label>
+<select id="irrigationMethod" required>
+<option value="" id="selectMethod">Select Method</option>
+<option value="Drip Irrigation" id="drip">Drip Irrigation</option>
+<option value="Sprinkler Irrigation" id="sprinkler">Sprinkler Irrigation</option>
+<option value="Flood Irrigation" id="flood">Flood Irrigation</option>
+<option value="Manual Watering" id="manual">Manual Watering</option>
+</select>
+
+<label id="notesLabel">Notes</label>
+<textarea id="notes" placeholder="Enter additional details"></textarea>
+
+<button type="submit" id="saveButton">Save Irrigation Record</button>
+</form>
+
+<p id="message"></p>
+</div>
+
+<div class="records-box">
+<h2 id="recordsTitle">📋 Irrigation Records</h2>
+
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th id="cropTh">Crop</th>
+<th id="dateTh">Date</th>
+<th id="waterTh">Water (Litres)</th>
+<th id="methodTh">Method</th>
+<th id="notesTh">Notes</th>
+<th id="actionTh">Action</th>
+</tr>
+</thead>
+
+<tbody id="recordsTable">
+<tr><td colspan="6" id="loadingText">Loading records...</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<button class="back-btn" onclick="location.href='p.html'" id="backButton">
+Back to Dashboard
+</button>
+
+</div>
+
+<script>
+let currentUser = null;
+
+const translations = {
+en:{
+language:"Language:",
+title:"💧 Irrigation Management System",
+formTitle:"Add Irrigation Record",
+crop:"Crop Name",
+cropPlaceholder:"Enter crop name",
+date:"Irrigation Date",
+water:"Water Quantity (Litres)",
+waterPlaceholder:"Enter water quantity",
+method:"Irrigation Method",
+selectMethod:"Select Method",
+drip:"Drip Irrigation",
+sprinkler:"Sprinkler Irrigation",
+flood:"Flood Irrigation",
+manual:"Manual Watering",
+notes:"Notes",
+notesPlaceholder:"Enter additional details",
+save:"Save Irrigation Record",
+records:"📋 Irrigation Records",
+cropTh:"Crop",
+dateTh:"Date",
+waterTh:"Water (Litres)",
+methodTh:"Method",
+notesTh:"Notes",
+actionTh:"Action",
+loading:"Loading records...",
+noRecords:"No irrigation records found.",
+delete:"Delete",
+back:"Back to Dashboard",
+saving:"Saving record...",
+saved:"Irrigation record saved successfully!",
+error:"Error: ",
+confirmDelete:"Are you sure you want to delete this record?",
+deleted:"Record deleted successfully!",
+deleteError:"Error deleting record: ",
+loginError:"Please login again.",
+notesEmpty:"-"
+},
+kn:{
+language:"ಭಾಷೆ:",
+title:"💧 ನೀರಾವರಿ ನಿರ್ವಹಣಾ ವ್ಯವಸ್ಥೆ",
+formTitle:"ನೀರಾವರಿ ದಾಖಲೆ ಸೇರಿಸಿ",
+crop:"ಬೆಳೆ ಹೆಸರು",
+cropPlaceholder:"ಬೆಳೆ ಹೆಸರನ್ನು ನಮೂದಿಸಿ",
+date:"ನೀರಾವರಿ ದಿನಾಂಕ",
+water:"ನೀರಿನ ಪ್ರಮಾಣ (ಲೀಟರ್)",
+waterPlaceholder:"ನೀರಿನ ಪ್ರಮಾಣ ನಮೂದಿಸಿ",
+method:"ನೀರಾವರಿ ವಿಧಾನ",
+selectMethod:"ವಿಧಾನ ಆಯ್ಕೆಮಾಡಿ",
+drip:"ಹನಿ ನೀರಾವರಿ",
+sprinkler:"ಸಿಂಪಡಣೆ ನೀರಾವರಿ",
+flood:"ಪ್ರವಾಹ ನೀರಾವರಿ",
+manual:"ಕೈಯಿಂದ ನೀರು ಹಾಕುವುದು",
+notes:"ಟಿಪ್ಪಣಿಗಳು",
+notesPlaceholder:"ಹೆಚ್ಚುವರಿ ವಿವರಗಳನ್ನು ನಮೂದಿಸಿ",
+save:"ನೀರಾವರಿ ದಾಖಲೆ ಉಳಿಸಿ",
+records:"📋 ನೀರಾವರಿ ದಾಖಲೆಗಳು",
+cropTh:"ಬೆಳೆ",
+dateTh:"ದಿನಾಂಕ",
+waterTh:"ನೀರು (ಲೀಟರ್)",
+methodTh:"ವಿಧಾನ",
+notesTh:"ಟಿಪ್ಪಣಿಗಳು",
+actionTh:"ಕ್ರಿಯೆ",
+loading:"ದಾಖಲೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+noRecords:"ಯಾವುದೇ ನೀರಾವರಿ ದಾಖಲೆಗಳಿಲ್ಲ.",
+delete:"ಅಳಿಸಿ",
+back:"ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಹಿಂತಿರುಗಿ",
+saving:"ದಾಖಲೆಯನ್ನು ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
+saved:"ನೀರಾವರಿ ದಾಖಲೆ ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ!",
+error:"ದೋಷ: ",
+confirmDelete:"ಈ ದಾಖಲೆಯನ್ನು ಅಳಿಸಲು ನೀವು ಖಚಿತವಾಗಿದ್ದೀರಾ?",
+deleted:"ದಾಖಲೆ ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ!",
+deleteError:"ಅಳಿಸುವಲ್ಲಿ ದೋಷ: ",
+loginError:"ದಯವಿಟ್ಟು ಮತ್ತೆ ಲಾಗಿನ್ ಮಾಡಿ.",
+notesEmpty:"-"
+},
+hi:{
+language:"भाषा:",
+title:"💧 सिंचाई प्रबंधन प्रणाली",
+formTitle:"सिंचाई रिकॉर्ड जोड़ें",
+crop:"फसल का नाम",
+cropPlaceholder:"फसल का नाम दर्ज करें",
+date:"सिंचाई की तारीख",
+water:"पानी की मात्रा (लीटर)",
+waterPlaceholder:"पानी की मात्रा दर्ज करें",
+method:"सिंचाई का तरीका",
+selectMethod:"तरीका चुनें",
+drip:"ड्रिप सिंचाई",
+sprinkler:"स्प्रिंकलर सिंचाई",
+flood:"बाढ़ सिंचाई",
+manual:"हाथ से पानी देना",
+notes:"टिप्पणियाँ",
+notesPlaceholder:"अतिरिक्त जानकारी दर्ज करें",
+save:"सिंचाई रिकॉर्ड सेव करें",
+records:"📋 सिंचाई रिकॉर्ड",
+cropTh:"फसल",
+dateTh:"तारीख",
+waterTh:"पानी (लीटर)",
+methodTh:"तरीका",
+notesTh:"टिप्पणियाँ",
+actionTh:"कार्य",
+loading:"रिकॉर्ड लोड हो रहे हैं...",
+noRecords:"कोई सिंचाई रिकॉर्ड नहीं मिला।",
+delete:"हटाएं",
+back:"डैशबोर्ड पर वापस जाएं",
+saving:"रिकॉर्ड सेव हो रहा है...",
+saved:"सिंचाई रिकॉर्ड सफलतापूर्वक सेव हुआ!",
+error:"त्रुटि: ",
+confirmDelete:"क्या आप इस रिकॉर्ड को हटाना चाहते हैं?",
+deleted:"रिकॉर्ड सफलतापूर्वक हटाया गया!",
+deleteError:"रिकॉर्ड हटाने में त्रुटि: ",
+loginError:"कृपया फिर से लॉगिन करें।",
+notesEmpty:"-"
+},
+te:{
+language:"భాష:",
+title:"💧 నీటిపారుదల నిర్వహణ వ్యవస్థ",
+formTitle:"నీటిపారుదల రికార్డు జోడించండి",
+crop:"పంట పేరు",
+cropPlaceholder:"పంట పేరు నమోదు చేయండి",
+date:"నీటిపారుదల తేదీ",
+water:"నీటి పరిమాణం (లీటర్లు)",
+waterPlaceholder:"నీటి పరిమాణం నమోదు చేయండి",
+method:"నీటిపారుదల విధానం",
+selectMethod:"విధానాన్ని ఎంచుకోండి",
+drip:"బిందు సేద్యం",
+sprinkler:"స్ప్రింక్లర్ సేద్యం",
+flood:"వరద సేద్యం",
+manual:"చేతితో నీరు పోయడం",
+notes:"గమనికలు",
+notesPlaceholder:"అదనపు వివరాలు నమోదు చేయండి",
+save:"నీటిపారుదల రికార్డును సేవ్ చేయండి",
+records:"📋 నీటిపారుదల రికార్డులు",
+cropTh:"పంట",
+dateTh:"తేదీ",
+waterTh:"నీరు (లీటర్లు)",
+methodTh:"విధానం",
+notesTh:"గమనికలు",
+actionTh:"చర్య",
+loading:"రికార్డులు లోడ్ అవుతున్నాయి...",
+noRecords:"నీటిపారుదల రికార్డులు లేవు.",
+delete:"తొలగించు",
+back:"డాష్‌బోర్డ్‌కు తిరిగి వెళ్ళండి",
+saving:"రికార్డు సేవ్ అవుతోంది...",
+saved:"నీటిపారుదల రికార్డు విజయవంతంగా సేవ్ అయింది!",
+error:"లోపం: ",
+confirmDelete:"ఈ రికార్డును తొలగించాలనుకుంటున్నారా?",
+deleted:"రికార్డు విజయవంతంగా తొలగించబడింది!",
+deleteError:"తొలగించడంలో లోపం: ",
+loginError:"దయచేసి మళ్లీ లాగిన్ అవ్వండి.",
+notesEmpty:"-"
+},
+ta:{
+language:"மொழி:",
+title:"💧 பாசன மேலாண்மை அமைப்பு",
+formTitle:"பாசன பதிவைச் சேர்க்கவும்",
+crop:"பயிர் பெயர்",
+cropPlaceholder:"பயிர் பெயரை உள்ளிடவும்",
+date:"பாசன தேதி",
+water:"நீர் அளவு (லிட்டர்)",
+waterPlaceholder:"நீர் அளவை உள்ளிடவும்",
+method:"பாசன முறை",
+selectMethod:"முறையைத் தேர்ந்தெடுக்கவும்",
+drip:"சொட்டு நீர் பாசனம்",
+sprinkler:"தெளிப்பு பாசனம்",
+flood:"வெள்ளப் பாசனம்",
+manual:"கையால் நீர் ஊற்றுதல்",
+notes:"குறிப்புகள்",
+notesPlaceholder:"கூடுதல் விவரங்களை உள்ளிடவும்",
+save:"பாசன பதிவை சேமிக்கவும்",
+records:"📋 பாசன பதிவுகள்",
+cropTh:"பயிர்",
+dateTh:"தேதி",
+waterTh:"நீர் (லிட்டர்)",
+methodTh:"முறை",
+notesTh:"குறிப்புகள்",
+actionTh:"செயல்",
+loading:"பதிவுகள் ஏற்றப்படுகின்றன...",
+noRecords:"பாசன பதிவுகள் எதுவும் இல்லை.",
+delete:"நீக்கு",
+back:"டாஷ்போர்டுக்குத் திரும்பு",
+saving:"பதிவு சேமிக்கப்படுகிறது...",
+saved:"பாசன பதிவு வெற்றிகரமாக சேமிக்கப்பட்டது!",
+error:"பிழை: ",
+confirmDelete:"இந்த பதிவை நீக்க விரும்புகிறீர்களா?",
+deleted:"பதிவு வெற்றிகரமாக நீக்கப்பட்டது!",
+deleteError:"நீக்குவதில் பிழை: ",
+loginError:"மீண்டும் உள்நுழையவும்.",
+notesEmpty:"-"
+}
+};
+
+let currentLanguage =
+localStorage.getItem("agritec_dashboard_language") || "en";
+
+if(!translations[currentLanguage]){
+currentLanguage="en";
+}
+
+function t(key){
+return translations[currentLanguage][key] || translations.en[key] || key;
+}
+
+function applyLanguage(){
+
+const lang=currentLanguage;
+
+document.getElementById("languageSelect").value=lang;
+document.getElementById("languageLabel").textContent=t("language");
+
+document.getElementById("pageTitle").textContent=t("title");
+document.getElementById("formTitle").textContent=t("formTitle");
+
+document.getElementById("cropLabel").textContent=t("crop");
+document.getElementById("cropName").placeholder=t("cropPlaceholder");
+
+document.getElementById("dateLabel").textContent=t("date");
+
+document.getElementById("waterLabel").textContent=t("water");
+document.getElementById("waterQuantity").placeholder=t("waterPlaceholder");
+
+document.getElementById("methodLabel").textContent=t("method");
+document.getElementById("selectMethod").textContent=t("selectMethod");
+document.getElementById("drip").textContent=t("drip");
+document.getElementById("sprinkler").textContent=t("sprinkler");
+document.getElementById("flood").textContent=t("flood");
+document.getElementById("manual").textContent=t("manual");
+
+document.getElementById("notesLabel").textContent=t("notes");
+document.getElementById("notes").placeholder=t("notesPlaceholder");
+
+document.getElementById("saveButton").textContent=t("save");
+document.getElementById("recordsTitle").textContent=t("records");
+
+document.getElementById("cropTh").textContent=t("cropTh");
+document.getElementById("dateTh").textContent=t("dateTh");
+document.getElementById("waterTh").textContent=t("waterTh");
+document.getElementById("methodTh").textContent=t("methodTh");
+document.getElementById("notesTh").textContent=t("notesTh");
+document.getElementById("actionTh").textContent=t("actionTh");
+
+document.getElementById("backButton").textContent=t("back");
+
+loadRecords();
+}
+
+document.getElementById("languageSelect").addEventListener("change",function(){
+
+currentLanguage=this.value;
+
+localStorage.setItem("agritec_dashboard_language",currentLanguage);
+
+applyLanguage();
+
+});
+
+
+// CHECK LOGIN
+
+async function checkUser(){
+
+const {data,error}=await supabaseClient.auth.getUser();
+
+if(error||!data.user){
+window.location.href="login.html";
+return;
+}
+
+currentUser=data.user;
+
+loadRecords();
+
+}
+
+
+// SAVE RECORD
+
+document.getElementById("irrigationForm")
+.addEventListener("submit",async function(event){
+
+event.preventDefault();
+
+if(!currentUser){
+alert(t("loginError"));
+return;
+}
+
+const record={
+user_id:currentUser.id,
+crop_name:document.getElementById("cropName").value.trim(),
+irrigation_date:document.getElementById("irrigationDate").value,
+water_quantity:Number(document.getElementById("waterQuantity").value),
+irrigation_method:document.getElementById("irrigationMethod").value,
+notes:document.getElementById("notes").value.trim()
+};
+
+const message=document.getElementById("message");
+
+message.textContent=t("saving");
+
+const {error}=await supabaseClient
+.from("irrigation_records")
+.insert([record]);
+
+if(error){
+message.textContent=t("error")+error.message;
+return;
+}
+
+message.textContent=t("saved");
+
+document.getElementById("irrigationForm").reset();
+
+loadRecords();
+
+});
+
+
+// LOAD RECORDS
+
+async function loadRecords(){
+
+if(!currentUser)return;
+
+const table=document.getElementById("recordsTable");
+
+table.innerHTML=`<tr><td colspan="6">${t("loading")}</td></tr>`;
+
+const {data,error}=await supabaseClient
+.from("irrigation_records")
+.select("*")
+.eq("user_id",currentUser.id)
+.order("irrigation_date",{ascending:false});
+
+if(error){
+
+table.innerHTML="";
+
+const row=document.createElement("tr");
+const cell=document.createElement("td");
+
+cell.colSpan=6;
+cell.textContent=t("error")+error.message;
+
+row.appendChild(cell);
+table.appendChild(row);
+
+return;
+}
+
+if(!data||data.length===0){
+
+table.innerHTML="";
+
+const row=document.createElement("tr");
+const cell=document.createElement("td");
+
+cell.colSpan=6;
+cell.textContent=t("noRecords");
+
+row.appendChild(cell);
+table.appendChild(row);
+
+return;
+}
+
+table.innerHTML="";
+
+data.forEach(record=>{
+
+const row=document.createElement("tr");
+
+const values=[
+record.crop_name,
+record.irrigation_date,
+record.water_quantity+" L",
+record.irrigation_method,
+record.notes||t("notesEmpty")
+];
+
+values.forEach(value=>{
+
+const cell=document.createElement("td");
+cell.textContent=value;
+row.appendChild(cell);
+
+});
+
+const actionCell=document.createElement("td");
+const deleteButton=document.createElement("button");
+
+deleteButton.textContent=t("delete");
+deleteButton.className="delete-btn";
+
+deleteButton.addEventListener("click",function(){
+deleteRecord(record.id);
+});
+
+actionCell.appendChild(deleteButton);
+row.appendChild(actionCell);
+table.appendChild(row);
+
+});
+
+}
+
+
+// DELETE RECORD
+
+async function deleteRecord(id){
+
+if(!confirm(t("confirmDelete")))return;
+
+const {error}=await supabaseClient
+.from("irrigation_records")
+.delete()
+.eq("id",id)
+.eq("user_id",currentUser.id);
+
+if(error){
+alert(t("deleteError")+error.message);
+return;
+}
+
+alert(t("deleted"));
+
+loadRecords();
+
+}
+
+
+// START
+
+applyLanguage();
+checkUser();
+
+</script>
+</body>
+</html>

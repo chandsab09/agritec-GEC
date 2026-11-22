@@ -1,0 +1,849 @@
+``
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consumer Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:#f4f8f4;color:#26352b}
+header{background:linear-gradient(135deg,#064e32,#2e8b57);color:white;padding:22px}
+.header-content{max-width:1250px;margin:auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px}
+header h1{margin-bottom:7px}
+.nav-buttons{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.nav-buttons button,.nav-buttons select{background:white;color:#064e32;padding:11px 15px;border:none;border-radius:8px;cursor:pointer;font-weight:bold}
+.nav-buttons select{font-size:14px}
+.container{max-width:1250px;margin:auto;padding:25px}
+.welcome{background:white;padding:22px;border-radius:12px;margin-bottom:22px;box-shadow:0 3px 12px #0000000d}
+.welcome h2{color:#176b3b;margin-bottom:8px}
+.section{display:none}
+.section.active{display:block}
+.section-title{color:#176b3b;margin:15px 0}
+.controls{display:flex;gap:15px;flex-wrap:wrap;margin-bottom:25px}
+.controls input,.controls select{padding:12px;border:1px solid #ccc;border-radius:8px;background:white;font-size:15px}
+.controls input{flex:1;min-width:220px}
+.controls select{min-width:190px}
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px}
+.product-card{background:white;border-radius:13px;overflow:hidden;box-shadow:0 3px 12px #0000000d}
+.product-image,.no-image{width:100%;height:220px;object-fit:cover;background:#e6eee7}
+.no-image{display:flex;align-items:center;justify-content:center;font-size:60px}
+.product-details{padding:20px}
+.product-details h3{color:#176b3b;font-size:21px;margin-bottom:10px}
+.category{display:inline-block;padding:6px 10px;background:#e4f3e8;color:#176b3b;border-radius:20px;font-size:13px;margin-bottom:12px}
+.product-details p{margin:8px 0;line-height:1.5;overflow-wrap:anywhere}
+.price{font-size:20px;color:#176b3b;font-weight:bold;margin:12px 0}
+.stock{color:#555;margin-bottom:12px}
+.farmer-info{background:#f0f8f1;border:1px solid #d6ead9;border-radius:9px;padding:12px;margin:12px 0}
+.farmer-info h4{color:#176b3b;margin-bottom:8px}
+.farmer-info p{margin:6px 0}
+.farmer-info a{color:#087443;font-weight:bold;text-decoration:none}
+.farmer-info a:hover{text-decoration:underline}
+.request-btn{width:100%;padding:12px;background:#198754;color:white;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;margin-top:10px}
+.request-btn:hover{background:#146c43}
+button:disabled{opacity:.6;cursor:not-allowed}
+#loading,#empty,#error{text-align:center;background:white;padding:30px;border-radius:12px;margin:20px 0}
+#empty,#error{display:none}
+#error{color:#b42318}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:15px;margin-bottom:22px}
+.summary-card{background:white;padding:20px;border-radius:12px;box-shadow:0 3px 12px #0000000d}
+.summary-card h3{color:#176b3b;margin-bottom:8px}
+.summary-card p{font-size:25px;font-weight:bold}
+.orders-container{display:grid;gap:15px}
+.order-card{background:white;border-radius:12px;padding:20px;box-shadow:0 3px 12px #0000000d}
+.order-card h3{color:#176b3b;margin-bottom:12px}
+.order-card p{margin:8px 0;overflow-wrap:anywhere}
+.status{display:inline-block;padding:7px 12px;border-radius:20px;font-weight:bold;margin:8px 0}
+.pending{background:#fff3cd;color:#856404}
+.accepted{background:#d4edda;color:#155724}
+.rejected{background:#f8d7da;color:#721c24}
+.cancelled{background:#e2e3e5;color:#383d41}
+.order-buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.cancel-order-btn,.delete-order-btn{color:white;border:none;padding:10px 15px;border-radius:7px;cursor:pointer}
+.cancel-order-btn{background:#dc3545}
+.delete-order-btn{background:#6c757d}
+.refresh-btn,.clear-history-btn{color:white;border:none;padding:11px 16px;border-radius:8px;cursor:pointer;margin-bottom:15px}
+.refresh-btn{background:#198754}
+.clear-history-btn{background:#b02a37;margin-left:8px}
+.empty-orders{background:white;padding:30px;border-radius:12px;text-align:center}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:15px}
+.modal-content{background:white;width:100%;max-width:450px;border-radius:15px;padding:25px;max-height:90vh;overflow-y:auto}
+.modal-content h2{color:#176b3b;margin-bottom:18px}
+.modal-content label{display:block;margin:14px 0 7px;font-weight:bold}
+.modal-content input,.modal-content textarea{width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:15px}
+.modal-content textarea{resize:vertical;min-height:90px}
+.modal-buttons{display:flex;gap:10px;margin-top:20px}
+.send-btn,.cancel-btn{flex:1;padding:12px;border:none;border-radius:8px;cursor:pointer}
+.send-btn{background:#198754;color:white}
+.cancel-btn{background:#ddd;color:#333}
+footer{text-align:center;padding:25px;color:#777;margin-top:30px}
+@media(max-width:600px){
+.container{padding:15px}
+.header-content{flex-direction:column;align-items:flex-start}
+.controls{flex-direction:column}
+.controls input,.controls select{width:100%}
+.order-buttons{flex-direction:column}
+.order-buttons button{width:100%}
+.clear-history-btn{margin-left:0}
+.nav-buttons{width:100%}
+.nav-buttons button{flex:1}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="header-content">
+<div>
+<h1>🌾 <span data-i18n="dashboard">Consumer Dashboard</span></h1>
+<p data-i18n="tagline">Buy fresh products directly from farmers</p>
+</div>
+
+<div class="nav-buttons">
+<select id="languageSelect" onchange="changeLanguage(this.value)">
+<option value="en">🌐 English</option>
+<option value="kn">ಕನ್ನಡ</option>
+<option value="hi">हिन्दी</option>
+<option value="te">తెలుగు</option>
+<option value="ta">தமிழ்</option>
+</select>
+
+<button onclick="showSection('marketSection')" data-i18n="marketplaceBtn">🛒 Marketplace</button>
+<button onclick="showSection('ordersSection');loadMyOrders()" data-i18n="myOrdersBtn">📦 My Orders</button>
+<button onclick="logout()" data-i18n="logoutBtn">🚪 Logout</button>
+</div>
+</div>
+</header>
+
+<div class="container">
+
+<div class="welcome">
+<h2 data-i18n="welcomeTitle">Welcome to the Consumer Marketplace!</h2>
+<p data-i18n="welcomeText">Explore fresh products, crops, vegetables, fruits, livestock and more from farmers.</p>
+</div>
+
+<section id="marketSection" class="section active">
+
+<h2 class="section-title" data-i18n="availableProducts">🛒 Available Products</h2>
+
+<div class="controls">
+<input type="text" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="🔍 Search products..." oninput="displayProducts()">
+
+<select id="categoryFilter" onchange="displayProducts()">
+<option value="All" data-i18n="allCategories">All Categories</option>
+<option value="Fruits" data-i18n="fruits">Fruits</option>
+<option value="Vegetables" data-i18n="vegetables">Vegetables</option>
+<option value="Crops" data-i18n="crops">Crops</option>
+<option value="Livestock" data-i18n="livestock">Livestock</option>
+<option value="Land" data-i18n="land">Land</option>
+<option value="Other" data-i18n="other">Other</option>
+</select>
+</div>
+
+<div id="loading" data-i18n="loadingProducts">Loading products...</div>
+<div id="error"></div>
+<div id="empty" data-i18n="noProducts">No products available.</div>
+<div class="products" id="productsContainer"></div>
+</section>
+
+<section id="ordersSection" class="section">
+
+<h2 class="section-title" data-i18n="ordersTracking">📦 My Orders & Tracking</h2>
+
+<div class="summary-grid">
+<div class="summary-card"><h3 data-i18n="totalOrders">Total Orders</h3><p id="totalOrders">0</p></div>
+<div class="summary-card"><h3 data-i18n="pending">Pending</h3><p id="pendingOrders">0</p></div>
+<div class="summary-card"><h3 data-i18n="accepted">Accepted</h3><p id="acceptedOrders">0</p></div>
+<div class="summary-card"><h3 data-i18n="rejected">Rejected</h3><p id="rejectedOrders">0</p></div>
+<div class="summary-card"><h3 data-i18n="cancelled">Cancelled</h3><p id="cancelledOrders">0</p></div>
+</div>
+
+<button class="refresh-btn" onclick="loadMyOrders()" data-i18n="refreshOrders">🔄 Refresh Orders</button>
+<button class="clear-history-btn" id="clearHistoryButton" onclick="clearOrderHistory()" data-i18n="clearHistory">🗑️ Clear History</button>
+
+<div id="ordersLoading" style="display:none;padding:20px" data-i18n="loadingOrders">Loading your orders...</div>
+<div id="ordersError" style="display:none;color:#b42318;background:white;padding:20px;border-radius:10px"></div>
+<div id="ordersEmpty" class="empty-orders" style="display:none">
+<h3 data-i18n="noOrders">No orders yet</h3>
+<p data-i18n="noOrdersText">Browse products and request something from a farmer.</p>
+</div>
+
+<div class="orders-container" id="ordersContainer"></div>
+</section>
+</div>
+
+<footer data-i18n="footer">🌱 Farm Management System | Connecting Farmers and Consumers</footer>
+
+<!-- REQUEST MODAL -->
+
+<div class="modal" id="requestModal">
+<div class="modal-content">
+
+<h2 data-i18n="requestProduct">📦 Request Product</h2>
+<div id="selectedProductInfo"></div>
+
+<form id="requestForm">
+
+<label for="consumerName" data-i18n="yourName">Your Name</label>
+<input type="text" id="consumerName" data-i18n-placeholder="namePlaceholder" placeholder="Enter your full name" required maxlength="100">
+
+<label for="consumerPhone" data-i18n="phoneNumber">Phone Number</label>
+<input type="tel" id="consumerPhone" data-i18n-placeholder="phonePlaceholder" placeholder="Enter 10-digit mobile number" required maxlength="10" pattern="[6-9][0-9]{9}" title="Enter a valid 10-digit Indian mobile number">
+
+<label for="requestQuantity" data-i18n="quantityRequired">Quantity Required</label>
+<input type="number" id="requestQuantity" min="0.01" step="0.01" required>
+
+<label for="requestMessage" data-i18n="messageFarmer">Message to Farmer</label>
+<textarea id="requestMessage" data-i18n-placeholder="messagePlaceholder" placeholder="Write your message..."></textarea>
+
+<div class="modal-buttons">
+<button type="submit" class="send-btn" id="sendRequestBtn" data-i18n="sendRequest">Send Request</button>
+<button type="button" class="cancel-btn" onclick="closeModal()" data-i18n="cancelBtn">Cancel</button>
+</div>
+
+</form>
+</div>
+</div>
+
+<script>
+let currentUser=null;
+let products=[];
+let selectedProduct=null;
+let myOrders=[];
+
+const LANG_KEY="agritec_dashboard_language";
+
+const translations={
+en:{
+dashboard:"Consumer Dashboard",tagline:"Buy fresh products directly from farmers",
+marketplaceBtn:"🛒 Marketplace",myOrdersBtn:"📦 My Orders",logoutBtn:"🚪 Logout",
+welcomeTitle:"Welcome to the Consumer Marketplace!",
+welcomeText:"Explore fresh products, crops, vegetables, fruits, livestock and more from farmers.",
+availableProducts:"🛒 Available Products",searchPlaceholder:"🔍 Search products...",
+allCategories:"All Categories",fruits:"Fruits",vegetables:"Vegetables",crops:"Crops",livestock:"Livestock",land:"Land",other:"Other",
+loadingProducts:"Loading products...",noProducts:"No products available.",
+ordersTracking:"📦 My Orders & Tracking",totalOrders:"Total Orders",pending:"Pending",accepted:"Accepted",rejected:"Rejected",cancelled:"Cancelled",
+refreshOrders:"🔄 Refresh Orders",clearHistory:"🗑️ Clear History",loadingOrders:"Loading your orders...",
+noOrders:"No orders yet",noOrdersText:"Browse products and request something from a farmer.",
+footer:"🌱 Farm Management System | Connecting Farmers and Consumers",
+requestProduct:"📦 Request Product",yourName:"Your Name",namePlaceholder:"Enter your full name",
+phoneNumber:"Phone Number",phonePlaceholder:"Enter 10-digit mobile number",
+quantityRequired:"Quantity Required",messageFarmer:"Message to Farmer",messagePlaceholder:"Write your message...",
+sendRequest:"Send Request",cancelBtn:"Cancel",product:"Product",available:"Available",
+farmerDetails:"🧑‍🌾 Farmer Details",name:"Name",mobile:"Mobile",notProvided:"Not provided",
+location:"Location",notSpecified:"Not specified",descriptionMissing:"No description available",
+requestButton:"🛒 Request Product",category:"Category",stock:"📦 Available",
+orderID:"Order ID",message:"Message",noMessage:"No message",orderDate:"Order Date",
+notAvailable:"Not available",status:"Status",cancelRequest:"Cancel Request",
+deleteOrder:"🗑️ Delete Order",productNotFound:"Product not found.",
+loginFirst:"Please login first.",loginSelect:"Please login and select a product.",
+enterName:"Please enter your name.",validPhone:"Enter a valid 10-digit mobile number.",
+validQuantity:"Enter a valid quantity.",stockExceeded:"Requested quantity is greater than available stock.",
+requestSent:"Your request has been sent successfully!",requestFailed:"Request failed: ",
+sending:"Sending...",sendRequestDefault:"Send Request",cancelConfirm:"Are you sure you want to cancel this request?",
+cancelFailed:"Cancel failed: ",cancelNotDone:"Cancellation was not completed. The order may already have been processed, or database permission is missing.",
+cancelSuccess:"Request cancelled successfully!",deleteConfirm:"Permanently delete this order from your history? This cannot be undone.",
+deleteSuccess:"Order deleted successfully!",deleteFailed:"Delete failed: ",deletePermission:"Order was not deleted. Check delete permissions.",
+historyEmpty:"Your order history is already empty.",
+clearConfirm:"Are you sure you want to permanently delete ALL your orders? Pending, Accepted, Rejected and Cancelled orders will be deleted. This cannot be undone.",
+deleting:"Deleting History...",historyCleared:"Your order history has been cleared successfully!",
+clearFailed:"Clear history failed: ",errorLoading:"Error loading products: ",couldNotOrders:"Could not load orders: ",
+all:"All",statusPending:"Pending",statusAccepted:"Accepted",statusRejected:"Rejected",statusCancelled:"Cancelled",
+currency:"₹"
+},
+kn:{
+dashboard:"ಗ್ರಾಹಕರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",tagline:"ರೈತರಿಂದ ನೇರವಾಗಿ ತಾಜಾ ಉತ್ಪನ್ನಗಳನ್ನು ಖರೀದಿಸಿ",
+marketplaceBtn:"🛒 ಮಾರುಕಟ್ಟೆ",myOrdersBtn:"📦 ನನ್ನ ಆರ್ಡರ್‌ಗಳು",logoutBtn:"🚪 ಲಾಗ್‌ಔಟ್",
+welcomeTitle:"ಗ್ರಾಹಕರ ಮಾರುಕಟ್ಟೆಗೆ ಸ್ವಾಗತ!",welcomeText:"ರೈತರಿಂದ ತಾಜಾ ಬೆಳೆಗಳು, ತರಕಾರಿಗಳು, ಹಣ್ಣುಗಳು ಮತ್ತು ಇತರ ಉತ್ಪನ್ನಗಳನ್ನು ನೋಡಿ.",
+availableProducts:"🛒 ಲಭ್ಯವಿರುವ ಉತ್ಪನ್ನಗಳು",searchPlaceholder:"🔍 ಉತ್ಪನ್ನಗಳನ್ನು ಹುಡುಕಿ...",
+allCategories:"ಎಲ್ಲಾ ವಿಭಾಗಗಳು",fruits:"ಹಣ್ಣುಗಳು",vegetables:"ತರಕಾರಿಗಳು",crops:"ಬೆಳೆಗಳು",livestock:"ಜಾನುವಾರುಗಳು",land:"ಭೂಮಿ",other:"ಇತರೆ",
+loadingProducts:"ಉತ್ಪನ್ನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",noProducts:"ಯಾವುದೇ ಉತ್ಪನ್ನ ಲಭ್ಯವಿಲ್ಲ.",
+ordersTracking:"📦 ನನ್ನ ಆರ್ಡರ್‌ಗಳು ಮತ್ತು ಟ್ರ್ಯಾಕಿಂಗ್",totalOrders:"ಒಟ್ಟು ಆರ್ಡರ್‌ಗಳು",pending:"ಬಾಕಿ",accepted:"ಸ್ವೀಕರಿಸಲಾಗಿದೆ",rejected:"ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",cancelled:"ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ",
+refreshOrders:"🔄 ಆರ್ಡರ್‌ಗಳನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ",clearHistory:"🗑️ ಇತಿಹಾಸ ಅಳಿಸಿ",loadingOrders:"ನಿಮ್ಮ ಆರ್ಡರ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+noOrders:"ಇನ್ನೂ ಯಾವುದೇ ಆರ್ಡರ್ ಇಲ್ಲ",noOrdersText:"ಉತ್ಪನ್ನಗಳನ್ನು ನೋಡಿ ಮತ್ತು ರೈತರಿಗೆ ವಿನಂತಿ ಕಳುಹಿಸಿ.",
+footer:"🌱 ಕೃಷಿ ನಿರ್ವಹಣಾ ವ್ಯವಸ್ಥೆ | ರೈತರು ಮತ್ತು ಗ್ರಾಹಕರ ಸಂಪರ್ಕ",
+requestProduct:"📦 ಉತ್ಪನ್ನ ವಿನಂತಿ",yourName:"ನಿಮ್ಮ ಹೆಸರು",namePlaceholder:"ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ",
+phoneNumber:"ಫೋನ್ ಸಂಖ್ಯೆ",phonePlaceholder:"10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ",
+quantityRequired:"ಅಗತ್ಯವಿರುವ ಪ್ರಮಾಣ",messageFarmer:"ರೈತರಿಗೆ ಸಂದೇಶ",messagePlaceholder:"ನಿಮ್ಮ ಸಂದೇಶ ಬರೆಯಿರಿ...",
+sendRequest:"ವಿನಂತಿ ಕಳುಹಿಸಿ",cancelBtn:"ರದ್ದು",product:"ಉತ್ಪನ್ನ",available:"ಲಭ್ಯವಿದೆ",
+farmerDetails:"🧑‍🌾 ರೈತರ ವಿವರಗಳು",name:"ಹೆಸರು",mobile:"ಮೊಬೈಲ್",notProvided:"ನೀಡಿಲ್ಲ",
+location:"ಸ್ಥಳ",notSpecified:"ನಿರ್ದಿಷ್ಟಪಡಿಸಿಲ್ಲ",descriptionMissing:"ವಿವರಣೆ ಲಭ್ಯವಿಲ್ಲ",
+requestButton:"🛒 ಉತ್ಪನ್ನ ವಿನಂತಿಸಿ",category:"ವಿಭಾಗ",stock:"📦 ಲಭ್ಯವಿರುವ ಪ್ರಮಾಣ",
+orderID:"ಆರ್ಡರ್ ID",message:"ಸಂದೇಶ",noMessage:"ಸಂದೇಶವಿಲ್ಲ",orderDate:"ಆರ್ಡರ್ ದಿನಾಂಕ",
+notAvailable:"ಲಭ್ಯವಿಲ್ಲ",status:"ಸ್ಥಿತಿ",cancelRequest:"ವಿನಂತಿ ರದ್ದು",
+deleteOrder:"🗑️ ಆರ್ಡರ್ ಅಳಿಸಿ",productNotFound:"ಉತ್ಪನ್ನ ಕಂಡುಬಂದಿಲ್ಲ.",
+loginFirst:"ದಯವಿಟ್ಟು ಮೊದಲು ಲಾಗಿನ್ ಮಾಡಿ.",loginSelect:"ಲಾಗಿನ್ ಮಾಡಿ ಉತ್ಪನ್ನ ಆಯ್ಕೆಮಾಡಿ.",
+enterName:"ನಿಮ್ಮ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.",validPhone:"ಸರಿಯಾದ 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.",
+validQuantity:"ಸರಿಯಾದ ಪ್ರಮಾಣ ನಮೂದಿಸಿ.",stockExceeded:"ಕೋರಿದ ಪ್ರಮಾಣ ಲಭ್ಯವಿರುವ ಸ್ಟಾಕ್‌ಗಿಂತ ಹೆಚ್ಚಾಗಿದೆ.",
+requestSent:"ನಿಮ್ಮ ವಿನಂತಿಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಕಳುಹಿಸಲಾಗಿದೆ!",requestFailed:"ವಿನಂತಿ ವಿಫಲವಾಗಿದೆ: ",
+cancelConfirm:"ಈ ವಿನಂತಿಯನ್ನು ರದ್ದು ಮಾಡಲು ಖಚಿತವೇ?",
+cancelFailed:"ರದ್ದು ವಿಫಲವಾಗಿದೆ: ",cancelNotDone:"ರದ್ದು ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಆರ್ಡರ್ ಈಗಾಗಲೇ ಪ್ರಕ್ರಿಯೆಯಾಗಿರಬಹುದು ಅಥವಾ ಅನುಮತಿ ಇಲ್ಲ.",
+cancelSuccess:"ವಿನಂತಿ ಯಶಸ್ವಿಯಾಗಿ ರದ್ದಾಗಿದೆ!",deleteConfirm:"ಈ ಆರ್ಡರ್ ಅನ್ನು ಇತಿಹಾಸದಿಂದ ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಬೇಕೇ? ಮತ್ತೆ ಮರಳಿ ಪಡೆಯಲು ಸಾಧ್ಯವಿಲ್ಲ.",
+deleteSuccess:"ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ!",deleteFailed:"ಅಳಿಸುವಿಕೆ ವಿಫಲವಾಗಿದೆ: ",deletePermission:"ಆರ್ಡರ್ ಅಳಿಸಲಾಗಿಲ್ಲ. ಅನುಮತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
+historyEmpty:"ನಿಮ್ಮ ಆರ್ಡರ್ ಇತಿಹಾಸ ಈಗಾಗಲೇ ಖಾಲಿಯಾಗಿದೆ.",
+clearConfirm:"ಎಲ್ಲಾ ಆರ್ಡರ್‌ಗಳನ್ನು ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಬೇಕೇ? ಮತ್ತೆ ಮರಳಿ ಪಡೆಯಲು ಸಾಧ್ಯವಿಲ್ಲ.",
+deleting:"ಇತಿಹಾಸ ಅಳಿಸಲಾಗುತ್ತಿದೆ...",historyCleared:"ಆರ್ಡರ್ ಇತಿಹಾಸವನ್ನು ಅಳಿಸಲಾಗಿದೆ!",
+clearFailed:"ಇತಿಹಾಸ ಅಳಿಸುವಿಕೆ ವಿಫಲವಾಗಿದೆ: ",errorLoading:"ಉತ್ಪನ್ನಗಳನ್ನು ಲೋಡ್ ಮಾಡುವಲ್ಲಿ ದೋಷ: ",couldNotOrders:"ಆರ್ಡರ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ: ",
+all:"ಎಲ್ಲಾ",statusPending:"ಬಾಕಿ",statusAccepted:"ಸ್ವೀಕರಿಸಲಾಗಿದೆ",statusRejected:"ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",statusCancelled:"ರದ್ದಾಗಿದೆ",currency:"₹"
+},
+hi:{
+dashboard:"उपभोक्ता डैशबोर्ड",tagline:"किसानों से सीधे ताज़ा उत्पाद खरीदें",
+marketplaceBtn:"🛒 बाज़ार",myOrdersBtn:"📦 मेरे ऑर्डर",logoutBtn:"🚪 लॉगआउट",
+welcomeTitle:"उपभोक्ता बाज़ार में आपका स्वागत है!",welcomeText:"किसानों से ताज़ी फसलें, सब्जियाँ, फल, पशुधन और अन्य उत्पाद देखें।",
+availableProducts:"🛒 उपलब्ध उत्पाद",searchPlaceholder:"🔍 उत्पाद खोजें...",
+allCategories:"सभी श्रेणियाँ",fruits:"फल",vegetables:"सब्जियाँ",crops:"फसलें",livestock:"पशुधन",land:"भूमि",other:"अन्य",
+loadingProducts:"उत्पाद लोड हो रहे हैं...",noProducts:"कोई उत्पाद उपलब्ध नहीं है.",
+ordersTracking:"📦 मेरे ऑर्डर और ट्रैकिंग",totalOrders:"कुल ऑर्डर",pending:"लंबित",accepted:"स्वीकृत",rejected:"अस्वीकृत",cancelled:"रद्द",
+refreshOrders:"🔄 ऑर्डर रिफ्रेश करें",clearHistory:"🗑️ इतिहास साफ़ करें",loadingOrders:"आपके ऑर्डर लोड हो रहे हैं...",
+noOrders:"अभी कोई ऑर्डर नहीं",noOrdersText:"उत्पाद देखें और किसान को अनुरोध भेजें.",
+footer:"🌱 कृषि प्रबंधन प्रणाली | किसानों और उपभोक्ताओं को जोड़ना",
+requestProduct:"📦 उत्पाद अनुरोध",yourName:"आपका नाम",namePlaceholder:"अपना पूरा नाम दर्ज करें",
+phoneNumber:"फोन नंबर",phonePlaceholder:"10 अंकों का मोबाइल नंबर दर्ज करें",
+quantityRequired:"आवश्यक मात्रा",messageFarmer:"किसान को संदेश",messagePlaceholder:"अपना संदेश लिखें...",
+sendRequest:"अनुरोध भेजें",cancelBtn:"रद्द करें",product:"उत्पाद",available:"उपलब्ध",
+farmerDetails:"🧑‍🌾 किसान का विवरण",name:"नाम",mobile:"मोबाइल",notProvided:"नहीं दिया गया",
+location:"स्थान",notSpecified:"निर्दिष्ट नहीं",descriptionMissing:"विवरण उपलब्ध नहीं",
+requestButton:"🛒 उत्पाद अनुरोध करें",category:"श्रेणी",stock:"📦 उपलब्ध मात्रा",
+orderID:"ऑर्डर ID",message:"संदेश",noMessage:"कोई संदेश नहीं",orderDate:"ऑर्डर तारीख",
+notAvailable:"उपलब्ध नहीं",status:"स्थिति",cancelRequest:"अनुरोध रद्द करें",
+deleteOrder:"🗑️ ऑर्डर हटाएँ",productNotFound:"उत्पाद नहीं मिला.",
+loginFirst:"कृपया पहले लॉगिन करें.",loginSelect:"लॉगिन करें और उत्पाद चुनें.",
+enterName:"अपना नाम दर्ज करें.",validPhone:"10 अंकों का सही मोबाइल नंबर दर्ज करें.",
+validQuantity:"सही मात्रा दर्ज करें.",stockExceeded:"अनुरोधित मात्रा उपलब्ध स्टॉक से अधिक है.",
+requestSent:"आपका अनुरोध सफलतापूर्वक भेज दिया गया!",requestFailed:"अनुरोध विफल: ",
+cancelConfirm:"क्या आप इस अनुरोध को रद्द करना चाहते हैं?",
+cancelFailed:"रद्द करना विफल: ",cancelNotDone:"रद्द नहीं हुआ. ऑर्डर पहले ही प्रक्रिया में हो सकता है या अनुमति नहीं है.",
+cancelSuccess:"अनुरोध सफलतापूर्वक रद्द किया गया!",deleteConfirm:"इस ऑर्डर को इतिहास से स्थायी रूप से हटाएँ? इसे वापस नहीं किया जा सकता.",
+deleteSuccess:"ऑर्डर सफलतापूर्वक हटाया गया!",deleteFailed:"हटाना विफल: ",deletePermission:"ऑर्डर हटाया नहीं गया. अनुमति जाँचें.",
+historyEmpty:"आपका ऑर्डर इतिहास पहले से खाली है.",
+clearConfirm:"क्या आप सभी ऑर्डर स्थायी रूप से हटाना चाहते हैं? यह वापस नहीं किया जा सकता.",
+deleting:"इतिहास हटाया जा रहा है...",historyCleared:"ऑर्डर इतिहास साफ़ किया गया!",
+clearFailed:"इतिहास साफ़ करना विफल: ",errorLoading:"उत्पाद लोड करने में त्रुटि: ",couldNotOrders:"ऑर्डर लोड नहीं हो सके: ",
+all:"सभी",statusPending:"लंबित",statusAccepted:"स्वीकृत",statusRejected:"अस्वीकृत",statusCancelled:"रद्द",currency:"₹"
+},
+te:{
+dashboard:"వినియోగదారు డాష్‌బోర్డ్",tagline:"రైతుల నుండి నేరుగా తాజా ఉత్పత్తులను కొనండి",
+marketplaceBtn:"🛒 మార్కెట్",myOrdersBtn:"📦 నా ఆర్డర్లు",logoutBtn:"🚪 లాగ్అవుట్",
+welcomeTitle:"వినియోగదారుల మార్కెట్‌కు స్వాగతం!",welcomeText:"రైతుల నుండి తాజా పంటలు, కూరగాయలు, పండ్లు, పశువులు మరియు ఇతర ఉత్పత్తులను చూడండి.",
+availableProducts:"🛒 అందుబాటులో ఉన్న ఉత్పత్తులు",searchPlaceholder:"🔍 ఉత్పత్తులను వెతకండి...",
+allCategories:"అన్ని వర్గాలు",fruits:"పండ్లు",vegetables:"కూరగాయలు",crops:"పంటలు",livestock:"పశువులు",land:"భూమి",other:"ఇతర",
+loadingProducts:"ఉత్పత్తులు లోడ్ అవుతున్నాయి...",noProducts:"ఉత్పత్తులు అందుబాటులో లేవు.",
+ordersTracking:"📦 నా ఆర్డర్లు మరియు ట్రాకింగ్",totalOrders:"మొత్తం ఆర్డర్లు",pending:"పెండింగ్",accepted:"ఆమోదించబడింది",rejected:"తిరస్కరించబడింది",cancelled:"రద్దు చేయబడింది",
+refreshOrders:"🔄 ఆర్డర్లను రిఫ్రెష్ చేయండి",clearHistory:"🗑️ చరిత్ర తొలగించండి",loadingOrders:"మీ ఆర్డర్లు లోడ్ అవుతున్నాయి...",
+noOrders:"ఇంకా ఆర్డర్లు లేవు",noOrdersText:"ఉత్పత్తులను చూసి రైతుకు అభ్యర్థన పంపండి.",
+footer:"🌱 వ్యవసాయ నిర్వహణ వ్యవస్థ | రైతులు మరియు వినియోగదారులను కలుపుతుంది",
+requestProduct:"📦 ఉత్పత్తి అభ్యర్థన",yourName:"మీ పేరు",namePlaceholder:"మీ పూర్తి పేరు నమోదు చేయండి",
+phoneNumber:"ఫోన్ నంబర్",phonePlaceholder:"10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి",
+quantityRequired:"అవసరమైన పరిమాణం",messageFarmer:"రైతుకు సందేశం",messagePlaceholder:"మీ సందేశాన్ని రాయండి...",
+sendRequest:"అభ్యర్థన పంపండి",cancelBtn:"రద్దు",product:"ఉత్పత్తి",available:"అందుబాటులో",
+farmerDetails:"🧑‍🌾 రైతు వివరాలు",name:"పేరు",mobile:"మొబైల్",notProvided:"ఇవ్వలేదు",
+location:"ప్రదేశం",notSpecified:"పేర్కొనలేదు",descriptionMissing:"వివరణ అందుబాటులో లేదు",
+requestButton:"🛒 ఉత్పత్తిని అభ్యర్థించండి",category:"వర్గం",stock:"📦 అందుబాటులో",
+orderID:"ఆర్డర్ ID",message:"సందేశం",noMessage:"సందేశం లేదు",orderDate:"ఆర్డర్ తేదీ",
+notAvailable:"అందుబాటులో లేదు",status:"స్థితి",cancelRequest:"అభ్యర్థన రద్దు",
+deleteOrder:"🗑️ ఆర్డర్ తొలగించండి",productNotFound:"ఉత్పత్తి కనబడలేదు.",
+loginFirst:"దయచేసి ముందుగా లాగిన్ చేయండి.",loginSelect:"లాగిన్ చేసి ఉత్పత్తిని ఎంచుకోండి.",
+enterName:"మీ పేరు నమోదు చేయండి.",validPhone:"సరైన 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి.",
+validQuantity:"సరైన పరిమాణాన్ని నమోదు చేయండి.",stockExceeded:"అభ్యర్థించిన పరిమాణం స్టాక్ కంటే ఎక్కువగా ఉంది.",
+requestSent:"మీ అభ్యర్థన విజయవంతంగా పంపబడింది!",requestFailed:"అభ్యర్థన విఫలమైంది: ",
+cancelConfirm:"ఈ అభ్యర్థనను రద్దు చేయాలనుకుంటున్నారా?",
+cancelFailed:"రద్దు విఫలమైంది: ",cancelNotDone:"రద్దు కాలేదు. ఆర్డర్ ఇప్పటికే ప్రాసెస్ అయి ఉండవచ్చు లేదా అనుమతి లేదు.",
+cancelSuccess:"అభ్యర్థన విజయవంతంగా రద్దు చేయబడింది!",deleteConfirm:"ఈ ఆర్డర్‌ను చరిత్ర నుండి శాశ్వతంగా తొలగించాలా? తిరిగి పొందలేరు.",
+deleteSuccess:"ఆర్డర్ విజయవంతంగా తొలగించబడింది!",deleteFailed:"తొలగింపు విఫలమైంది: ",deletePermission:"ఆర్డర్ తొలగించబడలేదు. అనుమతులను తనిఖీ చేయండి.",
+historyEmpty:"మీ ఆర్డర్ చరిత్ర ఇప్పటికే ఖాళీగా ఉంది.",
+clearConfirm:"అన్ని ఆర్డర్లను శాశ్వతంగా తొలగించాలా? తిరిగి పొందలేరు.",
+deleting:"చరిత్ర తొలగిస్తోంది...",historyCleared:"ఆర్డర్ చరిత్ర తొలగించబడింది!",
+clearFailed:"చరిత్ర తొలగింపు విఫలమైంది: ",errorLoading:"ఉత్పత్తులను లోడ్ చేయడంలో లోపం: ",couldNotOrders:"ఆర్డర్లను లోడ్ చేయలేకపోయింది: ",
+all:"అన్నీ",statusPending:"పెండింగ్",statusAccepted:"ఆమోదించబడింది",statusRejected:"తిరస్కరించబడింది",statusCancelled:"రద్దు",currency:"₹"
+},
+ta:{
+dashboard:"நுகர்வோர் டாஷ்போர்டு",tagline:"விவசாயிகளிடமிருந்து நேரடியாக புதிய பொருட்களை வாங்குங்கள்",
+marketplaceBtn:"🛒 சந்தை",myOrdersBtn:"📦 எனது ஆர்டர்கள்",logoutBtn:"🚪 வெளியேறு",
+welcomeTitle:"நுகர்வோர் சந்தைக்கு வரவேற்கிறோம்!",welcomeText:"விவசாயிகளிடமிருந்து புதிய பயிர்கள், காய்கறிகள், பழங்கள், கால்நடைகள் மற்றும் பிற பொருட்களைப் பாருங்கள்.",
+availableProducts:"🛒 கிடைக்கும் பொருட்கள்",searchPlaceholder:"🔍 பொருட்களைத் தேடுங்கள்...",
+allCategories:"அனைத்து வகைகள்",fruits:"பழங்கள்",vegetables:"காய்கறிகள்",crops:"பயிர்கள்",livestock:"கால்நடைகள்",land:"நிலம்",other:"மற்றவை",
+loadingProducts:"பொருட்கள் ஏற்றப்படுகின்றன...",noProducts:"பொருட்கள் எதுவும் கிடைக்கவில்லை.",
+ordersTracking:"📦 எனது ஆர்டர்கள் மற்றும் கண்காணிப்பு",totalOrders:"மொத்த ஆர்டர்கள்",pending:"நிலுவையில்",accepted:"ஏற்கப்பட்டது",rejected:"நிராகரிக்கப்பட்டது",cancelled:"ரத்து செய்யப்பட்டது",
+refreshOrders:"🔄 ஆர்டர்களைப் புதுப்பிக்கவும்",clearHistory:"🗑️ வரலாற்றை அழிக்கவும்",loadingOrders:"உங்கள் ஆர்டர்கள் ஏற்றப்படுகின்றன...",
+noOrders:"ஆர்டர்கள் இன்னும் இல்லை",noOrdersText:"பொருட்களைப் பார்த்து விவசாயிக்கு கோரிக்கை அனுப்புங்கள்.",
+footer:"🌱 விவசாய மேலாண்மை அமைப்பு | விவசாயிகள் மற்றும் நுகர்வோரை இணைக்கிறது",
+requestProduct:"📦 பொருள் கோரிக்கை",yourName:"உங்கள் பெயர்",namePlaceholder:"உங்கள் முழுப் பெயரை உள்ளிடவும்",
+phoneNumber:"தொலைபேசி எண்",phonePlaceholder:"10 இலக்க மொபைல் எண்ணை உள்ளிடவும்",
+quantityRequired:"தேவையான அளவு",messageFarmer:"விவசாயிக்கு செய்தி",messagePlaceholder:"உங்கள் செய்தியை எழுதுங்கள்...",
+sendRequest:"கோரிக்கையை அனுப்பவும்",cancelBtn:"ரத்து",product:"பொருள்",available:"கிடைக்கும்",
+farmerDetails:"🧑‍🌾 விவசாயி விவரங்கள்",name:"பெயர்",mobile:"மொபைல்",notProvided:"வழங்கப்படவில்லை",
+location:"இடம்",notSpecified:"குறிப்பிடப்படவில்லை",descriptionMissing:"விளக்கம் இல்லை",
+requestButton:"🛒 பொருளைக் கோருங்கள்",category:"வகை",stock:"📦 கிடைக்கும் அளவு",
+orderID:"ஆர்டர் ID",message:"செய்தி",noMessage:"செய்தி இல்லை",orderDate:"ஆர்டர் தேதி",
+notAvailable:"கிடைக்கவில்லை",status:"நிலை",cancelRequest:"கோரிக்கையை ரத்து செய்",
+deleteOrder:"🗑️ ஆர்டரை நீக்கு",productNotFound:"பொருள் கிடைக்கவில்லை.",
+loginFirst:"முதலில் உள்நுழையவும்.",loginSelect:"உள்நுழைந்து பொருளைத் தேர்ந்தெடுக்கவும்.",
+enterName:"உங்கள் பெயரை உள்ளிடவும்.",validPhone:"சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்.",
+validQuantity:"சரியான அளவை உள்ளிடவும்.",stockExceeded:"கோரிய அளவு கிடைக்கும் இருப்பை விட அதிகமாக உள்ளது.",
+requestSent:"உங்கள் கோரிக்கை வெற்றிகரமாக அனுப்பப்பட்டது!",requestFailed:"கோரிக்கை தோல்வி: ",
+cancelConfirm:"இந்த கோரிக்கையை ரத்து செய்ய விரும்புகிறீர்களா?",
+cancelFailed:"ரத்து தோல்வி: ",cancelNotDone:"ரத்து செய்யப்படவில்லை. ஆர்டர் ஏற்கனவே செயலாக்கப்பட்டிருக்கலாம் அல்லது அனுமதி இல்லை.",
+cancelSuccess:"கோரிக்கை வெற்றிகரமாக ரத்து செய்யப்பட்டது!",deleteConfirm:"இந்த ஆர்டரை வரலாற்றிலிருந்து நிரந்தரமாக நீக்கவா? மீட்டெடுக்க முடியாது.",
+deleteSuccess:"ஆர்டர் வெற்றிகரமாக நீக்கப்பட்டது!",deleteFailed:"நீக்குதல் தோல்வி: ",deletePermission:"ஆர்டர் நீக்கப்படவில்லை. அனுமதியைச் சரிபார்க்கவும்.",
+historyEmpty:"உங்கள் ஆர்டர் வரலாறு ஏற்கனவே காலியாக உள்ளது.",
+clearConfirm:"அனைத்து ஆர்டர்களையும் நிரந்தரமாக நீக்கவா? மீட்டெடுக்க முடியாது.",
+deleting:"வரலாறு நீக்கப்படுகிறது...",historyCleared:"ஆர்டர் வரலாறு அழிக்கப்பட்டது!",
+clearFailed:"வரலாறு அழித்தல் தோல்வி: ",errorLoading:"பொருட்களை ஏற்றுவதில் பிழை: ",couldNotOrders:"ஆர்டர்களை ஏற்ற முடியவில்லை: ",
+all:"அனைத்தும்",statusPending:"நிலுவையில்",statusAccepted:"ஏற்கப்பட்டது",statusRejected:"நிராகரிக்கப்பட்டது",statusCancelled:"ரத்து",currency:"₹"
+}
+};
+
+function getLang(){
+const saved=localStorage.getItem(LANG_KEY)||"en";
+return translations[saved]?saved:"en";
+}
+
+let currentLang=getLang();
+
+function t(key){
+return translations[currentLang][key]||translations.en[key]||key;
+}
+
+function changeLanguage(lang){
+if(!translations[lang])return;
+currentLang=lang;
+localStorage.setItem(LANG_KEY,lang);
+document.getElementById("languageSelect").value=lang;
+applyTranslations();
+displayProducts();
+if(myOrders.length||document.getElementById("ordersSection").classList.contains("active")){
+renderOrders();
+}
+}
+
+function applyTranslations(){
+document.querySelectorAll("[data-i18n]").forEach(el=>{
+const key=el.getAttribute("data-i18n");
+if(translations[currentLang][key])el.textContent=t(key);
+});
+document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>{
+const key=el.getAttribute("data-i18n-placeholder");
+if(translations[currentLang][key])el.placeholder=t(key);
+});
+document.getElementById("consumerPhone").title=t("validPhone");
+document.getElementById("languageSelect").value=currentLang;
+}
+
+/* INIT */
+
+async function initialize(){
+applyTranslations();
+
+const {data,error}=await supabaseClient.auth.getUser();
+
+if(error||!data.user){
+alert(t("loginFirst"));
+location.href="index.html";
+return;
+}
+
+currentUser=data.user;
+await loadProducts();
+await loadMyOrders();
+}
+
+/* NAVIGATION */
+
+function showSection(sectionId){
+document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+document.getElementById(sectionId).classList.add("active");
+}
+
+/* PRODUCTS */
+
+async function loadProducts(){
+document.getElementById("loading").style.display="block";
+document.getElementById("empty").style.display="none";
+document.getElementById("error").style.display="none";
+document.getElementById("productsContainer").innerHTML="";
+
+const {data,error}=await supabaseClient
+.from("farmer_products")
+.select("*")
+.order("created_at",{ascending:false});
+
+document.getElementById("loading").style.display="none";
+
+if(error){
+showError(error.message);
+return;
+}
+
+products=(data||[]).filter(p=>{
+const available=p.status==="Available"||p.status==null;
+return available&&Number(p.quantity)>0;
+});
+
+displayProducts();
+}
+
+function displayProducts(){
+const container=document.getElementById("productsContainer");
+container.innerHTML="";
+
+const search=document.getElementById("searchInput").value.trim().toLowerCase();
+const category=document.getElementById("categoryFilter").value;
+
+const filtered=products.filter(p=>{
+const name=(p.product_name||"").toLowerCase();
+const type=(p.category||"").toLowerCase();
+const location=(p.location||"").toLowerCase();
+const farmer=(p.farmer_name||"").toLowerCase();
+
+const matchSearch=name.includes(search)||type.includes(search)||location.includes(search)||farmer.includes(search);
+const matchCategory=category==="All"||type===category.toLowerCase();
+
+return matchSearch&&matchCategory;
+});
+
+if(filtered.length===0){
+document.getElementById("empty").style.display="block";
+return;
+}
+
+document.getElementById("empty").style.display="none";
+
+filtered.forEach(product=>{
+const card=document.createElement("div");
+card.className="product-card";
+
+const imageHTML=product.image_url
+? `<img class="product-image" src="${escapeHTML(product.image_url)}" alt="${escapeHTML(product.product_name||"Product")}" onerror="this.outerHTML='<div class=&quot;no-image&quot;>🌾</div>'">`
+: `<div class="no-image">🌾</div>`;
+
+const price=Number(product.price||0);
+const unit=product.unit||"kg";
+const farmerName=product.farmer_name||t("notProvided");
+const farmerPhone=product.farmer_phone||t("notProvided");
+const safePhone=farmerPhone.replace(/[^\d+]/g,"");
+
+const contactHTML=`
+<div class="farmer-info">
+<h4>${t("farmerDetails")}</h4>
+<p><strong>${t("name")}:</strong> ${escapeHTML(farmerName)}</p>
+<p><strong>${t("mobile")}:</strong> ${
+farmerPhone!=="Not provided"&&product.farmer_phone
+? `<a href="tel:${escapeHTML(safePhone)}">📞 ${escapeHTML(farmerPhone)}</a>`
+: escapeHTML(farmerPhone)
+}</p>
+</div>`;
+
+card.innerHTML=`
+${imageHTML}
+<div class="product-details">
+<h3>${escapeHTML(product.product_name||"Unnamed Product")}</h3>
+<span class="category">${escapeHTML(product.category||t("other"))}</span>
+<p>${escapeHTML(product.description||t("descriptionMissing"))}</p>
+${contactHTML}
+<p>📍 <strong>${t("location")}:</strong> ${escapeHTML(product.location||t("notSpecified"))}</p>
+<div class="price">₹${price.toLocaleString("en-IN")} / ${escapeHTML(unit)}</div>
+<div class="stock">${t("stock")}: ${escapeHTML(String(product.quantity))} ${escapeHTML(unit)}</div>
+<button class="request-btn" onclick="openRequest(${Number(product.id)})">${t("requestButton")}</button>
+</div>`;
+
+container.appendChild(card);
+});
+}
+
+/* REQUEST MODAL */
+
+function openRequest(productId){
+selectedProduct=products.find(p=>Number(p.id)===Number(productId));
+
+if(!selectedProduct){
+alert(t("productNotFound"));
+return;
+}
+
+document.getElementById("selectedProductInfo").innerHTML=`
+<p><strong>${t("product")}:</strong> ${escapeHTML(selectedProduct.product_name)}</p>
+<p style="margin-top:8px"><strong>${t("available")}:</strong>
+${escapeHTML(String(selectedProduct.quantity))} ${escapeHTML(selectedProduct.unit||"kg")}</p>`;
+
+document.getElementById("requestQuantity").value="";
+document.getElementById("requestQuantity").max=selectedProduct.quantity;
+document.getElementById("consumerName").value="";
+document.getElementById("consumerPhone").value="";
+document.getElementById("requestMessage").value="";
+document.getElementById("requestModal").style.display="flex";
+}
+
+function closeModal(){
+document.getElementById("requestModal").style.display="none";
+selectedProduct=null;
+}
+
+/* SEND REQUEST */
+
+document.getElementById("requestForm").addEventListener("submit",async function(event){
+event.preventDefault();
+
+if(!currentUser||!selectedProduct){
+alert(t("loginSelect"));
+return;
+}
+
+const consumerName=document.getElementById("consumerName").value.trim();
+const consumerPhone=document.getElementById("consumerPhone").value.trim();
+const quantity=Number(document.getElementById("requestQuantity").value);
+const message=document.getElementById("requestMessage").value.trim();
+const availableQuantity=Number(selectedProduct.quantity);
+
+if(consumerName.length<2){alert(t("enterName"));return;}
+if(!/^[6-9][0-9]{9}$/.test(consumerPhone)){alert(t("validPhone"));return;}
+if(!quantity||quantity<=0){alert(t("validQuantity"));return;}
+if(quantity>availableQuantity){alert(t("stockExceeded"));return;}
+
+const button=document.getElementById("sendRequestBtn");
+button.disabled=true;
+button.textContent=t("sending");
+
+try{
+const orderData={
+consumer_id:currentUser.id,
+farmer_id:selectedProduct.farmer_id,
+product_id:selectedProduct.id,
+product_name:selectedProduct.product_name,
+product_type:selectedProduct.category||"Other",
+quantity:quantity,
+message:message,
+consumer_name:consumerName,
+consumer_phone:consumerPhone,
+status:"Pending"
+};
+
+const {error}=await supabaseClient.from("consumer_orders").insert([orderData]);
+if(error)throw error;
+
+alert(t("requestSent"));
+closeModal();
+await loadProducts();
+await loadMyOrders();
+
+}catch(error){
+alert(t("requestFailed")+error.message);
+}finally{
+button.disabled=false;
+button.textContent=t("sendRequest");
+}
+});
+
+/* ORDERS */
+
+async function loadMyOrders(){
+if(!currentUser)return;
+
+const loading=document.getElementById("ordersLoading");
+const errorBox=document.getElementById("ordersError");
+const empty=document.getElementById("ordersEmpty");
+const container=document.getElementById("ordersContainer");
+
+loading.style.display="block";
+errorBox.style.display="none";
+empty.style.display="none";
+container.innerHTML="";
+
+const {data,error}=await supabaseClient
+.from("consumer_orders")
+.select("*")
+.eq("consumer_id",currentUser.id)
+.order("created_at",{ascending:false});
+
+loading.style.display="none";
+
+if(error){
+errorBox.style.display="block";
+errorBox.textContent=t("couldNotOrders")+error.message;
+return;
+}
+
+myOrders=data||[];
+updateOrderSummary();
+
+if(myOrders.length===0){
+empty.style.display="block";
+return;
+}
+
+renderOrders();
+}
+
+function renderOrders(){
+const container=document.getElementById("ordersContainer");
+container.innerHTML="";
+
+myOrders.forEach(order=>{
+const card=document.createElement("div");
+card.className="order-card";
+
+const status=(order.status||"Pending").toLowerCase();
+let statusClass="pending";
+let statusText=t("statusPending");
+
+if(status==="accepted"){statusClass="accepted";statusText=t("statusAccepted");}
+if(status==="rejected"){statusClass="rejected";statusText=t("statusRejected");}
+if(status==="cancelled"){statusClass="cancelled";statusText=t("statusCancelled");}
+
+const date=order.created_at
+?new Date(order.created_at).toLocaleString()
+:t("notAvailable");
+
+const canCancel=status==="pending";
+
+card.innerHTML=`
+<h3>🛒 ${escapeHTML(order.product_name||t("product"))}</h3>
+<p><strong>${t("orderID")}:</strong> ${escapeHTML(String(order.id))}</p>
+<p><strong>${t("category")}:</strong> ${escapeHTML(order.product_type||t("other"))}</p>
+<p><strong>${t("quantityRequired")}:</strong> ${escapeHTML(String(order.quantity))}</p>
+<p><strong>${t("message")}:</strong> ${escapeHTML(order.message||t("noMessage"))}</p>
+<p><strong>${t("orderDate")}:</strong> ${escapeHTML(date)}</p>
+<p><strong>${t("status")}:</strong> <span class="status ${statusClass}">${statusText}</span></p>
+<div class="order-buttons">
+${canCancel?`<button class="cancel-order-btn" onclick="cancelOrder(${Number(order.id)})">${t("cancelRequest")}</button>`:""}
+<button class="delete-order-btn" onclick="deleteOrder(${Number(order.id)})">${t("deleteOrder")}</button>
+</div>`;
+
+container.appendChild(card);
+});
+}
+
+/* SUMMARY */
+
+function updateOrderSummary(){
+document.getElementById("totalOrders").textContent=myOrders.length;
+document.getElementById("pendingOrders").textContent=myOrders.filter(o=>(o.status||"").toLowerCase()==="pending").length;
+document.getElementById("acceptedOrders").textContent=myOrders.filter(o=>(o.status||"").toLowerCase()==="accepted").length;
+document.getElementById("rejectedOrders").textContent=myOrders.filter(o=>(o.status||"").toLowerCase()==="rejected").length;
+document.getElementById("cancelledOrders").textContent=myOrders.filter(o=>(o.status||"").toLowerCase()==="cancelled").length;
+}
+
+/* CANCEL */
+
+async function cancelOrder(orderId){
+if(!confirm(t("cancelConfirm")))return;
+
+const {data,error}=await supabaseClient
+.from("consumer_orders")
+.update({status:"Cancelled"})
+.eq("id",orderId)
+.eq("consumer_id",currentUser.id)
+.eq("status","Pending")
+.select();
+
+if(error){alert(t("cancelFailed")+error.message);return;}
+
+if(!data||data.length===0){
+alert(t("cancelNotDone"));
+return;
+}
+
+alert(t("cancelSuccess"));
+await loadMyOrders();
+await loadProducts();
+}
+
+/* DELETE */
+
+async function deleteOrder(orderId){
+if(!confirm(t("deleteConfirm")))return;
+
+try{
+const {data,error}=await supabaseClient
+.from("consumer_orders")
+.delete()
+.eq("id",orderId)
+.eq("consumer_id",currentUser.id)
+.select();
+
+if(error)throw error;
+
+if(!data||data.length===0)throw new Error(t("deletePermission"));
+
+alert(t("deleteSuccess"));
+await loadMyOrders();
+
+}catch(error){
+console.error(error);
+alert(t("deleteFailed")+error.message);
+}
+}
+
+/* CLEAR HISTORY */
+
+async function clearOrderHistory(){
+if(myOrders.length===0){alert(t("historyEmpty"));return;}
+if(!confirm(t("clearConfirm")))return;
+
+const button=document.getElementById("clearHistoryButton");
+button.disabled=true;
+button.textContent=t("deleting");
+
+try{
+const {data,error}=await supabaseClient
+.from("consumer_orders")
+.delete()
+.eq("consumer_id",currentUser.id)
+.select();
+
+if(error)throw error;
+
+myOrders=[];
+updateOrderSummary();
+document.getElementById("ordersContainer").innerHTML="";
+document.getElementById("ordersEmpty").style.display="block";
+
+alert(t("historyCleared"));
+await loadMyOrders();
+
+}catch(error){
+console.error(error);
+alert(t("clearFailed")+error.message);
+}finally{
+button.disabled=false;
+button.textContent=t("clearHistory");
+}
+}
+
+/* LOGOUT */
+
+async function logout(){
+const {error}=await supabaseClient.auth.signOut();
+if(error){alert(error.message);return;}
+location.href="index.html";
+}
+
+/* ERROR */
+
+function showError(message){
+const error=document.getElementById("error");
+error.style.display="block";
+error.textContent=t("errorLoading")+message;
+}
+
+/* SECURITY */
+
+function escapeHTML(value){
+return String(value??"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+/* START */
+
+initialize();
+</script>
+</body>
+</html>
